@@ -5,6 +5,8 @@ VisualStudioVersion = 17.1.32328.378
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IASsure", "IASsure\IASsure.vcxproj", "{2FB744F5-E7DA-4AD6-BAF9-5DC47E340743}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IASsureTest", "IASsureTest\IASsureTest.vcxproj", "{D1AA1A48-D63A-4276-B6A5-04FFA60C1DC5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{2FB744F5-E7DA-4AD6-BAF9-5DC47E340743}.Release|x64.Build.0 = Release|x64
 		{2FB744F5-E7DA-4AD6-BAF9-5DC47E340743}.Release|x86.ActiveCfg = Release|Win32
 		{2FB744F5-E7DA-4AD6-BAF9-5DC47E340743}.Release|x86.Build.0 = Release|Win32
+		{D1AA1A48-D63A-4276-B6A5-04FFA60C1DC5}.Debug|x64.ActiveCfg = Debug|x64
+		{D1AA1A48-D63A-4276-B6A5-04FFA60C1DC5}.Debug|x64.Build.0 = Debug|x64
+		{D1AA1A48-D63A-4276-B6A5-04FFA60C1DC5}.Debug|x86.ActiveCfg = Debug|Win32
+		{D1AA1A48-D63A-4276-B6A5-04FFA60C1DC5}.Debug|x86.Build.0 = Debug|Win32
+		{D1AA1A48-D63A-4276-B6A5-04FFA60C1DC5}.Release|x64.ActiveCfg = Release|x64
+		{D1AA1A48-D63A-4276-B6A5-04FFA60C1DC5}.Release|x64.Build.0 = Release|x64
+		{D1AA1A48-D63A-4276-B6A5-04FFA60C1DC5}.Release|x86.ActiveCfg = Release|Win32
+		{D1AA1A48-D63A-4276-B6A5-04FFA60C1DC5}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
