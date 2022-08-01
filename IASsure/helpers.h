@@ -4,15 +4,27 @@
 #include <sstream>
 #include <vector>
 
-inline std::vector<std::string> split(const std::string& s, char delim = ' ')
-{
-	std::istringstream ss(s);
-	std::string item;
-	std::vector<std::string> res;
+#include "constants.h"
 
-	while (std::getline(ss, item, delim)) {
-		res.push_back(item);
+namespace IASsure {
+	inline std::vector<std::string> split(const std::string& s, char delim = ' ')
+	{
+		std::istringstream ss(s);
+		std::string item;
+		std::vector<std::string> res;
+
+		while (std::getline(ss, item, delim)) {
+			res.push_back(item);
+		}
+
+		return res;
 	}
 
-	return res;
+	inline int roundToNearest(int num, int multiple) {
+		return ((num + multiple / 2) / multiple) * multiple;
+	}
+
+	inline int roundToNearest(double num, int multiple) {
+		return roundToNearest((int)num, multiple);
+	}
 }

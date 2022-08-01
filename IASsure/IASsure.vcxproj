@@ -163,11 +163,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="cas.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="helpers.h" />
     <ClInclude Include="IASsure.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="cas.cpp" />
     <ClCompile Include="IASsure.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

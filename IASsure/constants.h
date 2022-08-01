@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Windows.h>
+
 constexpr auto PLUGIN_NAME = "IASsure";
 constexpr auto PLUGIN_VERSION = "1.0.0";
 constexpr auto PLUGIN_AUTHOR = "Nick Mueller";
@@ -7,11 +9,13 @@ constexpr auto PLUGIN_LICENSE = "(c) 2022, MIT License";
 
 constexpr auto SETTINGS_DELIMITER = '|';
 
-const int TAG_ITEM_CORRECTED_IAS = 1;
+const int TAG_ITEM_CALCULATED_IAS = 1;
+const int TAG_ITEM_CALCULATED_IAS_TOGGLABLE = 2;
 
 const int TAG_FUNC_OPEN_REPORTED_IAS_MENU = 100;
-const int TAG_FUNC_SET_REPORTED_IAS = 101;
-const int TAG_FUNC_CLEAR_REPORTED_IAS = 102;
+const int TAG_FUNC_CLEAR_REPORTED_IAS = 101;
+const int TAG_FUNC_TOGGLE_CALCULATED_IAS = 102;
+const int TAG_FUNC_SET_REPORTED_IAS = 200;
 
 const int MIN_MIN_REPORTED_IAS = 0;
 const int MAX_MIN_REPORTED_IAS = 500;

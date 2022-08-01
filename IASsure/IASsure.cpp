@@ -1,6 +1,6 @@
 ﻿#include "IASsure.h"
 
-IASsure::IASsure() : EuroScopePlugIn::CPlugIn(
+IASsure::IASsure::IASsure() : EuroScopePlugIn::CPlugIn(
 	EuroScopePlugIn::COMPATIBILITY_CODE,
 	PLUGIN_NAME,
 	PLUGIN_VERSION,
@@ -23,13 +23,13 @@ IASsure::IASsure() : EuroScopePlugIn::CPlugIn(
 	this->LoadSettings();
 }
 
-IASsure::~IASsure()
+IASsure::IASsure::~IASsure()
 {
 }
 
-bool IASsure::OnCompileCommand(const char* sCommandLine)
+bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 {
-	std::vector<std::string> args = split(sCommandLine);
+	std::vector<std::string> args = ::IASsure::split(sCommandLine);
 
 	if (args[0] == ".ias") {
 		if (args.size() == 1) {
@@ -50,11 +50,11 @@ bool IASsure::OnCompileCommand(const char* sCommandLine)
 			try {
 				min = std::stoi(args[2]);
 			}
-			catch (std::invalid_argument const& ex) {
+			catch (std::invalid_argument const&) {
 				this->LogMessage("Invalid value for minimum reported IAS speed, ensure you enter a valid number", "Config");
 				return true;
 			}
-			catch (std::out_of_range const& ex) {
+			catch (std::out_of_range const&) {
 				std::ostringstream msg;
 				msg << "Value for minimum reported IAS speed is outside of valid range (" << MIN_MIN_REPORTED_IAS << " - " << MAX_MIN_REPORTED_IAS << ")";
 
@@ -92,11 +92,11 @@ bool IASsure::OnCompileCommand(const char* sCommandLine)
 			try {
 				max = std::stoi(args[2]);
 			}
-			catch (std::invalid_argument const& ex) {
+			catch (std::invalid_argument const&) {
 				this->LogMessage("Invalid value for maximum reported IAS speed, ensure you enter a valid number", "Config");
 				return true;
 			}
-			catch (std::out_of_range const& ex) {
+			catch (std::out_of_range const&) {
 				std::ostringstream msg;
 				msg << "Value for maximum reported IAS speed is outside of valid range (" << MIN_MAX_REPORTED_IAS << " - " << MAX_MAX_REPORTED_IAS << ")";
 
@@ -134,11 +134,11 @@ bool IASsure::OnCompileCommand(const char* sCommandLine)
 			try {
 				interval = std::stoi(args[2]);
 			}
-			catch (std::invalid_argument const& ex) {
+			catch (std::invalid_argument const&) {
 				this->LogMessage("Invalid value for interval of reported IAS speed, ensure you enter a valid number", "Config");
 				return true;
 			}
-			catch (std::out_of_range const& ex) {
+			catch (std::out_of_range const&) {
 				std::ostringstream msg;
 				msg << "Value for interval of reported IAS speed is outside of valid range (" << MIN_INTERVAL_REPORTED_IAS << " - " << MAX_INTERVAL_REPORTED_IAS << ")";
 
@@ -183,20 +183,24 @@ bool IASsure::OnCompileCommand(const char* sCommandLine)
 	return false;
 }
 
-void IASsure::OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan, EuroScopePlugIn::CRadarTarget RadarTarget, int ItemCode, int TagData, char sItemString[16], int* pColorCode, COLORREF* pRGB, double* pFontSize)
+void IASsure::IASsure::OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan, EuroScopePlugIn::CRadarTarget RadarTarget, int ItemCode, int TagData, char sItemString[16], int* pColorCode, COLORREF* pRGB, double* pFontSize)
 {
 	if (!FlightPlan.IsValid()) {
 		return;
 	}
 
 	switch (ItemCode) {
-	case TAG_ITEM_CORRECTED_IAS:
-		this->CalculateCorrectedAirspeed(RadarTarget, sItemString, pColorCode, pRGB);
+	case TAG_ITEM_CALCULATED_IAS:
+		this->CalculateIAS(RadarTarget, sItemString, pColorCode, pRGB);
 		break;
+	case TAG_ITEM_CALCULATED_IAS_TOGGLABLE:
+		if (this->calculatedIASToggled.contains(FlightPlan.GetCallsign())) {
+			this->CalculateIAS(RadarTarget, sItemString, pColorCode, pRGB);
+		}
 	}
 }
 
-void IASsure::OnFunctionCall(int FunctionId, const char* sItemString, POINT Pt, RECT Area)
+void IASsure::IASsure::OnFunctionCall(int FunctionId, const char* sItemString, POINT Pt, RECT Area)
 {
 	EuroScopePlugIn::CFlightPlan fp = this->FlightPlanSelectASEL();
 	if (!fp.IsValid()) {
@@ -204,31 +208,53 @@ void IASsure::OnFunctionCall(int FunctionId, const char* sItemString, POINT Pt, 
 	}
 
 	switch (FunctionId) {
-	case TAG_FUNC_OPEN_REPORTED_IAS_MENU:
+	case TAG_FUNC_OPEN_REPORTED_IAS_MENU: {
+		EuroScopePlugIn::CRadarTarget rt = fp.GetCorrelatedRadarTarget();
+		if (!rt.IsValid()) {
+			return;
+		}
+
+		int ias;
+		try {
+			double cas = ::IASsure::calculateCAS(rt.GetPosition().GetPressureAltitude(), rt.GetPosition().GetReportedGS());
+			ias = ::IASsure::roundToNearest(cas, this->intervalReportedIAS);
+		}
+		catch (std::exception const&) {
+			ias = rt.GetPosition().GetReportedGS();
+		}
+
 		this->OpenPopupList(Area, "Speed", 1);
 		for (int i = this->maxReportedIAS; i >= this->minReportedIAS; i -= this->intervalReportedIAS) {
-			this->AddPopupListElement(std::to_string(i).c_str(), NULL, TAG_FUNC_SET_REPORTED_IAS, false, EuroScopePlugIn::POPUP_ELEMENT_NO_CHECKBOX, false, false);
+			this->AddPopupListElement(std::to_string(i).c_str(), NULL, TAG_FUNC_SET_REPORTED_IAS, i >= ias && ias >= i - this->intervalReportedIAS, EuroScopePlugIn::POPUP_ELEMENT_NO_CHECKBOX, false, false);
 		}
+		this->AddPopupListElement("---", NULL, 0, false, EuroScopePlugIn::POPUP_ELEMENT_NO_CHECKBOX, true, true);
+		this->AddPopupListElement("Clear", NULL, TAG_FUNC_CLEAR_REPORTED_IAS, false, EuroScopePlugIn::POPUP_ELEMENT_NO_CHECKBOX, false, true);
+
+		break;
+	}
+	case TAG_FUNC_CLEAR_REPORTED_IAS:
+		this->ClearReportedIAS(fp);
+		break;
+	case TAG_FUNC_TOGGLE_CALCULATED_IAS:
+		this->ToggleCalculatedIAS(fp);
 		break;
 	case TAG_FUNC_SET_REPORTED_IAS:
 		this->SetReportedIAS(fp, sItemString);
 		break;
-	case TAG_FUNC_CLEAR_REPORTED_IAS:
-		this->ClearReportedIAS(fp);
-		break;
 	}
 }
 
-void IASsure::RegisterTagItems()
+void IASsure::IASsure::RegisterTagItems()
 {
-	this->RegisterTagItemType("Corrected IAS", TAG_ITEM_CORRECTED_IAS);
+	this->RegisterTagItemType("Calculated IAS", TAG_ITEM_CALCULATED_IAS);
+	this->RegisterTagItemType("Calculated IAS (togglable)", TAG_ITEM_CALCULATED_IAS_TOGGLABLE);
 
 	this->RegisterTagItemFunction("Open reported IAS menu", TAG_FUNC_OPEN_REPORTED_IAS_MENU);
-	this->RegisterTagItemFunction("Set reported IAS", TAG_FUNC_SET_REPORTED_IAS);
 	this->RegisterTagItemFunction("Clear reported IAS", TAG_FUNC_CLEAR_REPORTED_IAS);
+	this->RegisterTagItemFunction("Toggle calculated IAS", TAG_FUNC_TOGGLE_CALCULATED_IAS);
 }
 
-void IASsure::SetReportedIAS(const EuroScopePlugIn::CFlightPlan& fp, std::string selected)
+void IASsure::IASsure::SetReportedIAS(const EuroScopePlugIn::CFlightPlan& fp, std::string selected)
 {
 	int ias;
 	try {
@@ -245,66 +271,67 @@ void IASsure::SetReportedIAS(const EuroScopePlugIn::CFlightPlan& fp, std::string
 	this->reportedIAS.insert_or_assign(fp.GetCallsign(), ias);
 }
 
-void IASsure::ClearReportedIAS(const EuroScopePlugIn::CFlightPlan& fp)
+void IASsure::IASsure::ClearReportedIAS(const EuroScopePlugIn::CFlightPlan& fp)
 {
 	this->reportedIAS.erase(fp.GetCallsign());
 }
 
-void IASsure::CalculateCorrectedAirspeed(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB)
+void IASsure::IASsure::ToggleCalculatedIAS(const EuroScopePlugIn::CFlightPlan& fp)
+{
+	if (this->calculatedIASToggled.contains(fp.GetCallsign())) {
+		this->calculatedIASToggled.erase(fp.GetCallsign());
+	}
+	else {
+		this->calculatedIASToggled.insert({ fp.GetCallsign(), true });
+	}
+}
+
+void IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB)
 {
 	if (!rt.IsValid()) {
 		return;
 	}
 
-	// adapted from https://www.omnicalculator.com/physics/true-airspeed @ 2022-07-31T15:00:33Z
+	
 	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
-	double oat = 0.02; // Outside Air Temperature correction term
 	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
-
-	double w = 0; // wind speed in knots
-	double theta = 0; // wind correction angle
-
-	double tas = gs - w * cos(theta); // true air speed in knots
-
-	int altCorr = (alt * oat + 1000);
-	if (altCorr == 0) {
-		// TODO handle
+	
+	double cas;
+	try {
+		cas = ::IASsure::calculateCAS(alt, gs);
+	}
+	catch (std::exception const&) {
+		// gs or alt outside of supported ranges. no value to display in tag
 		return;
 	}
-
-	int calcIAS = std::round((1000 * tas) / (alt * oat + 1000));
 
 	std::ostringstream tag;
 	tag << "I";
 
 	auto it = this->reportedIAS.find(rt.GetCallsign());
 	if (it == this->reportedIAS.end()) {
-		tag << std::setw(3) << std::setfill('0') << calcIAS;
+		tag << std::setw(3) << std::round(cas);
 	}
 	else {
-		int diff = it->second - calcIAS;
+		double diff = it->second - cas;
 		if (diff > 0) {
 			tag << "+";
-			tag << std::setw(3);
 		}
 		else if (diff < 0) {
-			tag << std::setw(4); // one extra char due to leading "-"
-		}
-		else {
-			tag << std::setw(3);
+			tag << "-";
 		}
 
-		tag << std::setfill('0') << diff;
+		tag << std::setfill('0') << std::setw(3) << std::round(std::abs(diff));
 	}
 
 	strcpy_s(tagItemContent, 16, tag.str().c_str());
 }
 
-void IASsure::LoadSettings()
+void IASsure::IASsure::LoadSettings()
 {
 	const char* settings = this->GetDataFromSettings(PLUGIN_NAME);
 	if (settings) {
-		std::vector<std::string> splitSettings = split(settings, SETTINGS_DELIMITER);
+		std::vector<std::string> splitSettings = ::IASsure::split(settings, SETTINGS_DELIMITER);
 
 		if (splitSettings.size() < 4) {
 			this->LogMessage("Invalid saved settings found, reverting to default.");
@@ -325,7 +352,7 @@ void IASsure::LoadSettings()
 	}
 }
 
-void IASsure::SaveSettings()
+void IASsure::IASsure::SaveSettings()
 {
 	std::ostringstream ss;
 	ss << this->debug << SETTINGS_DELIMITER 
@@ -336,35 +363,35 @@ void IASsure::SaveSettings()
 	this->SaveDataToSettings(PLUGIN_NAME, "Settings", ss.str().c_str());
 }
 
-void IASsure::LogMessage(std::string message)
+void IASsure::IASsure::LogMessage(std::string message)
 {
 	this->DisplayUserMessage("Message", PLUGIN_NAME, message.c_str(), true, true, true, false, false);
 }
 
-void IASsure::LogMessage(std::string message, std::string type)
+void IASsure::IASsure::LogMessage(std::string message, std::string type)
 {
 	this->DisplayUserMessage(PLUGIN_NAME, type.c_str(), message.c_str(), true, true, true, false, false);
 }
 
-void IASsure::LogDebugMessage(std::string message)
+void IASsure::IASsure::LogDebugMessage(std::string message)
 {
 	if (this->debug) {
 		this->LogMessage(message);
 	}
 }
 
-void IASsure::LogDebugMessage(std::string message, std::string type)
+void IASsure::IASsure::LogDebugMessage(std::string message, std::string type)
 {
 	if (this->debug) {
 		this->LogMessage(message, type);
 	}
 }
 
-IASsure* pPlugin;
+IASsure::IASsure* pPlugin;
 
 void __declspec (dllexport) EuroScopePlugInInit(EuroScopePlugIn::CPlugIn** ppPlugInInstance)
 {
-	*ppPlugInInstance = pPlugin = new IASsure();
+	*ppPlugInInstance = pPlugin = new IASsure::IASsure();
 }
 
 void __declspec (dllexport) EuroScopePlugInExit(void)
