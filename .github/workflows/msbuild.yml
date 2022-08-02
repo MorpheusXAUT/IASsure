@@ -3,11 +3,11 @@ name: MSBuild
 on:
   push:
     branches: [ "master" ]
+    tags: [ "v*.*.*" ]
   pull_request:
     branches: [ "master" ]
 
 env:
-  # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: IASsure.sln
 
   BUILD_CONFIGURATION: Release
@@ -39,6 +39,12 @@ jobs:
       with:
         testAssembly: 'IASsureTest.dll'
         searchFolder: '${{env.BUILD_CONFIGURATION}}/'
+    
+    - name: Upload plugin DLL artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: plugin-dll
+        path: '${{env.BUILD_CONFIGURATION}}/IASsure.dll'
 
   publish-test-results:
     runs-on: windows-latest
