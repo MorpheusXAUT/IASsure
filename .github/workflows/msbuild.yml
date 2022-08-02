@@ -25,13 +25,13 @@ jobs:
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
-    
-    - name: run VSTest
-      uses: microsoft/vstest-action@v1.0.0
-      with:
-        testAssembly: 'IASsureTest.dll'
-        searchFolder: '${{env.GITHUB_WORKSPACE}}/${{env.BUILD_CONFIGURATION}}'
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{env.BUILD_PLATFORM}} ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Test
+      uses: microsoft/vstest-action@v1.0.0
+      with:
+        testAssembly: 'IASsureTest.dll'
+        searchFolder: '${{env.GITHUB_WORKSPACE}}/${{env.BUILD_CONFIGURATION}}'
