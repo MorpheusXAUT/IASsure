@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags: [ "v*.*.*" ]
+
+env:
+  SOLUTION_FILE_PATH: IASsure.sln
+
+  BUILD_CONFIGURATION: Release
+  BUILD_PLATFORM: x86
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    name: "Release"
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Download Artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: plugin-dll
+    
+    - name: Create Archive
+      run: zip IASsure_${{env.GITHUB_REF_NAME}}.zip IASsure.dll README.md LICENSE
+      
+    - name: Create checksums.txt
+      run: sha256sum IASsure_${{env.GITHUB_REF_NAME}}.zip > checksums.txt
+    
+    - name: Import GPG key
+      uses: crazy-max/ghaction-import-gpg@v4
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.GPG_PASSPHRASE }}
+    
+    - name: Sign checksums.txt
+      run: gpg --output checksums.txt.sig --sign checksums.txt
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        generate_release_notes: true
+        files: |
+          IASsure_${{env.GITHUB_REF_NAME}}.zip
+          checksums.txt
+          checksums.txt.sig
