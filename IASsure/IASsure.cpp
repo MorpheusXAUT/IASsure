@@ -176,6 +176,7 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 			this->LogMessage("Resetting plugin state", "Config");
 
 			this->reportedIAS.clear();
+			this->calculatedIASToggled.clear();
 			return true;
 		}
 	}
@@ -278,11 +279,12 @@ void IASsure::IASsure::ClearReportedIAS(const EuroScopePlugIn::CFlightPlan& fp)
 
 void IASsure::IASsure::ToggleCalculatedIAS(const EuroScopePlugIn::CFlightPlan& fp)
 {
-	if (this->calculatedIASToggled.contains(fp.GetCallsign())) {
-		this->calculatedIASToggled.erase(fp.GetCallsign());
+	std::string cs = fp.GetCallsign();
+	if (this->calculatedIASToggled.contains(cs)) {
+		this->calculatedIASToggled.erase(cs);
 	}
 	else {
-		this->calculatedIASToggled.insert({ fp.GetCallsign(), true });
+		this->calculatedIASToggled.insert(cs);
 	}
 }
 

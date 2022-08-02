@@ -2,9 +2,10 @@
 
 #include <cmath>
 #include <iomanip>
-#include <map>
 #include <string>
 #include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <windows.h>
 
@@ -29,8 +30,8 @@ namespace IASsure {
 		int minReportedIAS;
 		int maxReportedIAS;
 		int intervalReportedIAS;
-		std::map<std::string, int> reportedIAS;
-		std::map<std::string, bool> calculatedIASToggled;
+		std::unordered_map<std::string, int> reportedIAS;
+		std::unordered_set<std::string> calculatedIASToggled;
 
 		void RegisterTagItems();
 
