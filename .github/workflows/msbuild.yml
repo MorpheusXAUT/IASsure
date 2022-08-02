@@ -1,0 +1,64 @@
+name: MSBuild
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  SOLUTION_FILE_PATH: IASsure.sln
+
+  BUILD_CONFIGURATION: Release
+  BUILD_PLATFORM: x86
+
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    name: "Build and test"
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{env.BUILD_PLATFORM}} ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Test
+      uses: microsoft/vstest-action@v1.0.0
+      with:
+        testAssembly: 'IASsureTest.dll'
+        searchFolder: '${{env.BUILD_CONFIGURATION}}/'
+    
+    - name: Upload plugin DLL artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: plugin-dll
+        path: '${{env.BUILD_CONFIGURATION}}/IASsure.dll'
+
+  publish-test-results:
+    runs-on: windows-latest
+    name: "Publish Tests Results"
+    needs: build-and-test
+    
+    if: success() || failure()
+
+    steps:
+    - name: Download Artifacts
+      uses: actions/download-artifact@v2
+      with:
+        path: artifacts
+
+    - name: Publish Test Results
+      uses: EnricoMi/publish-unit-test-result-action/composite@v2
+      with:
+        trx_files: "artifacts/**/*.trx"
