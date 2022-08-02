@@ -34,4 +34,4 @@ jobs:
       uses: microsoft/vstest-action@v1.0.0
       with:
         testAssembly: 'IASsureTest.dll'
-        searchFolder: '${{env.GITHUB_WORKSPACE}}/${{env.BUILD_CONFIGURATION}}'
+        searchFolder: '${{env.BUILD_CONFIGURATION}}/'
