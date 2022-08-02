@@ -3,8 +3,8 @@ name: MSBuild
 on:
   push:
     branches: [ "master" ]
-  # pull_request:
-  #   branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 env:
   SOLUTION_FILE_PATH: IASsure.sln
