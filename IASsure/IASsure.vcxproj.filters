@@ -24,7 +24,10 @@
     <ClInclude Include="helpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="cas.h">
+    <ClInclude Include="calculations.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,8 +35,13 @@
     <ClCompile Include="IASsure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="cas.cpp">
+    <ClCompile Include="calculations.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="IASsure.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

@@ -1,4 +1,4 @@
-#include "cas.h"
+#include "calculations.h"
 
 double IASsure::calculateTemperature(double alt)
 {
@@ -26,6 +26,11 @@ double IASsure::calculateStaticPressure(double alt)
 	
 	double hs = (SPECIFIC_GAS_CONSTANT_DRY_AIR * STANDARD_TEMPERATURE_HIGH) / GRAVITATIONAL_ACCELERATION_SEA_LEVEL;
 	return STATIC_PRESSURE_HIGH * std::exp(-1 * ((altM - ALTITUDE_LOW_UPPER_LIMIT) / hs));
+}
+
+double IASsure::calculateSpeedOfSound(double temp)
+{
+	return std::sqrt(HEAT_CAPACITY_RATIO_AIR * SPECIFIC_GAS_CONSTANT_DRY_AIR * temp);
 }
 
 double IASsure::calculateDynamicPressure(double ps, double temp, double tas)
@@ -59,4 +64,19 @@ double IASsure::calculateCAS(double alt, double tas)
 	double cas = SPEED_OF_SOUND_LOW * std::sqrt(tmp3) * KNOTS_PER_METER_PER_SECOND;
 
 	return cas;
+}
+
+double IASsure::calculateMach(double alt, double tas)
+{
+	if (tas <= 0) {
+		throw std::out_of_range("true air speed outside of supported range");
+	}
+
+	// adapted from http://walter.bislins.ch/blog/index.asp?page=Fluggeschwindigkeiten%2C+IAS%2C+TAS%2C+EAS%2C+CAS%2C+Mach#H_Mach_Speed @ 2022-08-03T22:17:28Z
+	double temp = calculateTemperature(alt);
+	double a = calculateSpeedOfSound(temp);
+
+	double mach = (tas * METERS_PER_SECOND_PER_KNOT) / a;
+
+	return mach;
 }

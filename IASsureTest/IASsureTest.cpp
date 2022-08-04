@@ -1,6 +1,6 @@
 #include "CppUnitTest.h"
 
-#include "../IASsure/cas.h"
+#include "../IASsure/calculations.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -45,6 +45,19 @@ namespace IASsureTest
 				int alt = 69000;
 				double ps = IASsure::calculateTemperature(alt);
 				});
+		}
+
+		void AssertSpeedOfSound(double temp, double expected)
+		{
+			double a = IASsure::calculateSpeedOfSound(temp);
+			Assert::AreEqual(expected, a);
+		}
+
+		TEST_METHOD(TestCalculateSpeedOfSound)
+		{
+			AssertSpeedOfSound(288.15, 340.66143760058901);
+			AssertSpeedOfSound(268.34, 328.74289138954776);
+			AssertSpeedOfSound(216.65, 295.38810965761638);
 		}
 
 		void AssertDynamicPressure(int alt, int tas, double expected)
@@ -102,6 +115,36 @@ namespace IASsureTest
 				int alt = 0;
 				int tas = -240;
 				double cas = IASsure::calculateCAS(alt, tas);
+				});
+		}
+
+		void AssertMach(int alt, int tas, double expected)
+		{
+			double mach = IASsure::calculateMach(alt, tas);
+			Assert::AreEqual(expected, mach);
+		}
+
+		TEST_METHOD(TestCalculateMach)
+		{
+			AssertMach(-1240, 240, 0.36089698844032253);
+			AssertMach(-1240, 420, 0.63156972977056436);
+			AssertMach(0, 240, 0.36243217763739083);
+			AssertMach(0, 420, 0.63425631086543399);
+			AssertMach(10000, 240, 0.37557352529905308);
+			AssertMach(10000, 420, 0.65725366927334283);
+			AssertMach(38000, 240, 0.41798116657361573);
+			AssertMach(38000, 420, 0.73146704150382746);
+
+			Assert::ExpectException<std::out_of_range>([]() {
+				int alt = 69000;
+				int tas = 240;
+				double mach = IASsure::calculateMach(alt, tas);
+				});
+
+			Assert::ExpectException<std::out_of_range>([]() {
+				int alt = 0;
+				int tas = -240;
+				double mach = IASsure::calculateMach(alt, tas);
 				});
 		}
 	};

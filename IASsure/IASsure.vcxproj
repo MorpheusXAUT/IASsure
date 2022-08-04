@@ -163,14 +163,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="cas.h" />
+    <ClInclude Include="calculations.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="helpers.h" />
     <ClInclude Include="IASsure.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="cas.cpp" />
+    <ClCompile Include="calculations.cpp" />
     <ClCompile Include="IASsure.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="IASsure.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

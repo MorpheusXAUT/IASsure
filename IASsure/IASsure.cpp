@@ -19,6 +19,9 @@ IASsure::IASsure::IASsure() : EuroScopePlugIn::CPlugIn(
 	this->minReportedIAS = 150;
 	this->maxReportedIAS = 400;
 	this->intervalReportedIAS = 5;
+	this->minReportedMach = 50;
+	this->maxReportedMach = 99;
+	this->intervalReportedMach = 1;
 
 	this->LoadSettings();
 }
@@ -198,6 +201,15 @@ void IASsure::IASsure::OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan, Eur
 		if (this->calculatedIASToggled.contains(FlightPlan.GetCallsign())) {
 			this->CalculateIAS(RadarTarget, sItemString, pColorCode, pRGB);
 		}
+		break;
+	case TAG_ITEM_CALCULATED_MACH:
+		this->CalculateMach(RadarTarget, sItemString, pColorCode, pRGB);
+		break;
+	case TAG_ITEM_CALCULATED_MACH_TOGGLABLE:
+		if (this->calculatedMachToggled.contains(FlightPlan.GetCallsign())) {
+			this->CalculateMach(RadarTarget, sItemString, pColorCode, pRGB);
+		}
+		break;
 	}
 }
 
@@ -242,6 +254,39 @@ void IASsure::IASsure::OnFunctionCall(int FunctionId, const char* sItemString, P
 	case TAG_FUNC_SET_REPORTED_IAS:
 		this->SetReportedIAS(fp, sItemString);
 		break;
+	case TAG_FUNC_OPEN_REPORTED_MACH_MENU: {
+		EuroScopePlugIn::CRadarTarget rt = fp.GetCorrelatedRadarTarget();
+		if (!rt.IsValid()) {
+			return;
+		}
+
+		int mach;
+		try {
+			double m = ::IASsure::calculateMach(rt.GetPosition().GetPressureAltitude(), rt.GetPosition().GetReportedGS());
+			mach = ::IASsure::roundToNearest(m * 100, this->intervalReportedMach);
+		}
+		catch (std::exception const&) {
+			// no default value available
+		}
+
+		this->OpenPopupList(Area, "Mach", 1);
+		for (int i = this->maxReportedMach; i >= this->minReportedMach; i -= this->intervalReportedMach) {
+			this->AddPopupListElement(std::to_string(i).c_str(), NULL, TAG_FUNC_SET_REPORTED_MACH, i >= mach && mach >= i - this->intervalReportedMach, EuroScopePlugIn::POPUP_ELEMENT_NO_CHECKBOX, false, false);
+		}
+		this->AddPopupListElement("---", NULL, 0, false, EuroScopePlugIn::POPUP_ELEMENT_NO_CHECKBOX, true, true);
+		this->AddPopupListElement("Clear", NULL, TAG_FUNC_CLEAR_REPORTED_MACH, false, EuroScopePlugIn::POPUP_ELEMENT_NO_CHECKBOX, false, true);
+
+		break;
+	}
+	case TAG_FUNC_CLEAR_REPORTED_MACH:
+		this->ClearReportedMach(fp);
+		break;
+	case TAG_FUNC_TOGGLE_CALCULATED_MACH:
+		this->ToggleCalculatedMach(fp);
+		break;
+	case TAG_FUNC_SET_REPORTED_MACH:
+		this->SetReportedMach(fp, sItemString);
+		break;
 	}
 }
 
@@ -249,10 +294,15 @@ void IASsure::IASsure::RegisterTagItems()
 {
 	this->RegisterTagItemType("Calculated IAS", TAG_ITEM_CALCULATED_IAS);
 	this->RegisterTagItemType("Calculated IAS (togglable)", TAG_ITEM_CALCULATED_IAS_TOGGLABLE);
+	this->RegisterTagItemType("Calculated Mach", TAG_ITEM_CALCULATED_MACH);
+	this->RegisterTagItemType("Calculated Mach (togglable)", TAG_ITEM_CALCULATED_MACH_TOGGLABLE);
 
 	this->RegisterTagItemFunction("Open reported IAS menu", TAG_FUNC_OPEN_REPORTED_IAS_MENU);
 	this->RegisterTagItemFunction("Clear reported IAS", TAG_FUNC_CLEAR_REPORTED_IAS);
 	this->RegisterTagItemFunction("Toggle calculated IAS", TAG_FUNC_TOGGLE_CALCULATED_IAS);
+	this->RegisterTagItemFunction("Open reported Mach menu", TAG_FUNC_OPEN_REPORTED_MACH_MENU);
+	this->RegisterTagItemFunction("Clear reported Mach", TAG_FUNC_CLEAR_REPORTED_MACH);
+	this->RegisterTagItemFunction("Toggle calculated Mach", TAG_FUNC_TOGGLE_CALCULATED_MACH);
 }
 
 void IASsure::IASsure::SetReportedIAS(const EuroScopePlugIn::CFlightPlan& fp, std::string selected)
@@ -293,7 +343,6 @@ void IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt, cha
 	if (!rt.IsValid()) {
 		return;
 	}
-
 	
 	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
 	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
@@ -312,7 +361,7 @@ void IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt, cha
 
 	auto it = this->reportedIAS.find(rt.GetCallsign());
 	if (it == this->reportedIAS.end()) {
-		tag << std::setw(3) << std::round(cas);
+		tag << std::setfill('0') << std::setw(3) << std::round(cas);
 	}
 	else {
 		double diff = it->second - cas;
@@ -324,6 +373,79 @@ void IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt, cha
 		}
 
 		tag << std::setfill('0') << std::setw(3) << std::round(std::abs(diff));
+	}
+
+	strcpy_s(tagItemContent, 16, tag.str().c_str());
+}
+
+void IASsure::IASsure::SetReportedMach(const EuroScopePlugIn::CFlightPlan& fp, std::string selected)
+{
+	int mach;
+	try {
+		mach = std::stoi(selected);
+	}
+	catch (std::exception const& ex) {
+		std::ostringstream msg;
+		msg << "Failed to parse reported Mach: " << ex.what();
+
+		this->LogMessage(msg.str());
+		return;
+	}
+
+	this->reportedMach.insert_or_assign(fp.GetCallsign(), (double)mach / 100.0);
+}
+
+void IASsure::IASsure::ClearReportedMach(const EuroScopePlugIn::CFlightPlan& fp)
+{
+	this->reportedMach.erase(fp.GetCallsign());
+}
+
+void IASsure::IASsure::ToggleCalculatedMach(const EuroScopePlugIn::CFlightPlan& fp)
+{
+	std::string cs = fp.GetCallsign();
+	if (this->calculatedMachToggled.contains(cs)) {
+		this->calculatedMachToggled.erase(cs);
+	}
+	else {
+		this->calculatedMachToggled.insert(cs);
+	}
+}
+
+void IASsure::IASsure::CalculateMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB)
+{
+	if (!rt.IsValid()) {
+		return;
+	}
+
+	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
+	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
+
+	double mach;
+	try {
+		mach = ::IASsure::calculateMach(alt, gs);
+	}
+	catch (std::exception const&) {
+		// gs or alt outside of supported ranges. no value to display in tag
+		return;
+	}
+
+	std::ostringstream tag;
+	tag << "M";
+
+	auto it = this->reportedMach.find(rt.GetCallsign());
+	if (it == this->reportedMach.end()) {
+		tag << std::setfill('0') << std::setw(2) << std::round(mach * 100);
+	}
+	else {
+		double diff = it->second - mach;
+		if (diff > 0) {
+			tag << "+";
+		}
+		else if (diff < 0) {
+			tag << "-";
+		}
+
+		tag << std::setfill('0') << std::setw(2) << std::round(std::abs(diff * 100));
 	}
 
 	strcpy_s(tagItemContent, 16, tag.str().c_str());

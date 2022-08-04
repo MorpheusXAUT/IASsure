@@ -7,7 +7,9 @@ namespace IASsure {
 	double calculateTemperature(double alt);
 	double calculateStaticPressure(double altM);
 	double calculateDynamicPressure(double ps, double temp, double tas);
+	double calculateSpeedOfSound(double temp);
 	double calculateCAS(double alt, double tas);
+	double calculateMach(double alt, double tas);
 }
 
 constexpr double HEAT_CAPACITY_RATIO_AIR = 1.403; // https://en.wikipedia.org/wiki/Heat_capacity_ratio

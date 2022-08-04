@@ -11,7 +11,7 @@
 
 #include "EuroScope/EuroScopePlugIn.h"
 
-#include "cas.h"
+#include "calculations.h"
 #include "constants.h"
 #include "helpers.h"
 
@@ -32,6 +32,11 @@ namespace IASsure {
 		int intervalReportedIAS;
 		std::unordered_map<std::string, int> reportedIAS;
 		std::unordered_set<std::string> calculatedIASToggled;
+		int minReportedMach;
+		int maxReportedMach;
+		int intervalReportedMach;
+		std::unordered_map<std::string, double> reportedMach;
+		std::unordered_set<std::string> calculatedMachToggled;
 
 		void RegisterTagItems();
 
@@ -39,6 +44,11 @@ namespace IASsure {
 		void ClearReportedIAS(const EuroScopePlugIn::CFlightPlan& fp);
 		void ToggleCalculatedIAS(const EuroScopePlugIn::CFlightPlan& fp);
 		void CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB);
+
+		void SetReportedMach(const EuroScopePlugIn::CFlightPlan& fp, std::string selected);
+		void ClearReportedMach(const EuroScopePlugIn::CFlightPlan& fp);
+		void ToggleCalculatedMach(const EuroScopePlugIn::CFlightPlan& fp);
+		void CalculateMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB);
 
 		void LoadSettings();
 		void SaveSettings();
