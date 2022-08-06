@@ -223,19 +223,19 @@ void IASsure::IASsure::ToggleCalculatedIAS(const EuroScopePlugIn::CFlightPlan& f
 {
 	std::string cs = fp.GetCallsign();
 	if (abbreviated) {
-		if (this->calculatedIASToggled.contains(cs)) {
-			this->calculatedIASToggled.erase(cs);
-		}
-		else {
-			this->calculatedIASToggled.insert(cs);
-		}
-	}
-	else {
 		if (this->calculatedIASAbbreviatedToggled.contains(cs)) {
 			this->calculatedIASAbbreviatedToggled.erase(cs);
 		}
 		else {
 			this->calculatedIASAbbreviatedToggled.insert(cs);
+		}
+	}
+	else {
+		if (this->calculatedIASToggled.contains(cs)) {
+			this->calculatedIASToggled.erase(cs);
+		}
+		else {
+			this->calculatedIASToggled.insert(cs);
 		}
 	}
 }
