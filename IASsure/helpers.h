@@ -1,10 +1,10 @@
 #pragma once
 
+#include <cmath>
+#include <stdexcept>
 #include <string>
 #include <sstream>
 #include <vector>
-
-#include "constants.h"
 
 namespace IASsure {
 	inline std::vector<std::string> split(const std::string& s, char delim = ' ')
@@ -20,11 +20,16 @@ namespace IASsure {
 		return res;
 	}
 
-	inline int roundToNearest(int num, int multiple) {
+	inline long roundToNearest(long num, long multiple)
+	{
+		if (multiple == 0) {
+			throw std::domain_error("multiple is zero");
+		}
 		return ((num + multiple / 2) / multiple) * multiple;
 	}
 
-	inline int roundToNearest(double num, int multiple) {
-		return roundToNearest((int)num, multiple);
+	inline long roundToNearest(double num, long multiple)
+	{
+		return roundToNearest(std::lround(num), multiple);
 	}
 }

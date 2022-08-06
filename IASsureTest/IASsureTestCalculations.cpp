@@ -1,4 +1,4 @@
-#include "CppUnitTest.h"
+#include <CppUnitTest.h>
 
 #include "../IASsure/calculations.h"
 
@@ -6,7 +6,7 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace IASsureTest
 {
-	TEST_CLASS(IASsureTest)
+	TEST_CLASS(Calculations)
 	{
 	public:
 		void AssertTemperature(int alt, double expected)
@@ -22,7 +22,7 @@ namespace IASsureTest
 			AssertTemperature(10000, 268.33800063398394);
 			AssertTemperature(38000, 216.65000000000001);
 
-			Assert::ExpectException<std::out_of_range>([]() {
+			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 69000;
 				double temp = IASsure::calculateTemperature(alt);
 				});
@@ -41,7 +41,7 @@ namespace IASsureTest
 			AssertStaticPressure(10000, 69682.108717641051);
 			AssertStaticPressure(38000, 20646.238661044939);
 
-			Assert::ExpectException<std::out_of_range>([]() {
+			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 69000;
 				double ps = IASsure::calculateTemperature(alt);
 				});
@@ -79,7 +79,7 @@ namespace IASsureTest
 			AssertDynamicPressure(38000, 240, 2642.8063762573533);
 			AssertDynamicPressure(38000, 420, 8841.6571184346903);
 
-			Assert::ExpectException<std::out_of_range>([]() {
+			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 0;
 				int tas = -240;
 				double ps = IASsure::calculateStaticPressure(alt);
@@ -105,13 +105,13 @@ namespace IASsureTest
 			AssertCAS(38000, 240, 126.95436608760033);
 			AssertCAS(38000, 420, 229.79866924051956);
 
-			Assert::ExpectException<std::out_of_range>([]() {
+			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 69000;
 				int tas = 240;
 				double cas = IASsure::calculateCAS(alt, tas);
 				});
 
-			Assert::ExpectException<std::out_of_range>([]() {
+			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 0;
 				int tas = -240;
 				double cas = IASsure::calculateCAS(alt, tas);
@@ -135,13 +135,13 @@ namespace IASsureTest
 			AssertMach(38000, 240, 0.41798116657361573);
 			AssertMach(38000, 420, 0.73146704150382746);
 
-			Assert::ExpectException<std::out_of_range>([]() {
+			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 69000;
 				int tas = 240;
 				double mach = IASsure::calculateMach(alt, tas);
 				});
 
-			Assert::ExpectException<std::out_of_range>([]() {
+			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 0;
 				int tas = -240;
 				double mach = IASsure::calculateMach(alt, tas);

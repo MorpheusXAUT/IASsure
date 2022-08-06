@@ -162,7 +162,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="IASsureTest.cpp" />
+    <ClCompile Include="IASsureTestCalculations.cpp" />
+    <ClCompile Include="IASsureTestHelpers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\IASsure\IASsure.vcxproj">

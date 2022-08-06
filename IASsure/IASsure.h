@@ -27,14 +27,9 @@ namespace IASsure {
 
 	private:
 		bool debug;
-		int minReportedIAS;
-		int maxReportedIAS;
-		int intervalReportedIAS;
 		std::unordered_map<std::string, int> reportedIAS;
 		std::unordered_set<std::string> calculatedIASToggled;
-		int minReportedMach;
-		int maxReportedMach;
-		int intervalReportedMach;
+		std::unordered_set<std::string> calculatedIASAbbreviatedToggled;
 		std::unordered_map<std::string, double> reportedMach;
 		std::unordered_set<std::string> calculatedMachToggled;
 
@@ -42,8 +37,8 @@ namespace IASsure {
 
 		void SetReportedIAS(const EuroScopePlugIn::CFlightPlan& fp, std::string selected);
 		void ClearReportedIAS(const EuroScopePlugIn::CFlightPlan& fp);
-		void ToggleCalculatedIAS(const EuroScopePlugIn::CFlightPlan& fp);
-		void CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB);
+		void ToggleCalculatedIAS(const EuroScopePlugIn::CFlightPlan& fp, bool abbreviated = false);
+		void CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool abbreviated = false);
 
 		void SetReportedMach(const EuroScopePlugIn::CFlightPlan& fp, std::string selected);
 		void ClearReportedMach(const EuroScopePlugIn::CFlightPlan& fp);

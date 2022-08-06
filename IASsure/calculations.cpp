@@ -5,7 +5,7 @@ double IASsure::calculateTemperature(double alt)
 	double altM = (double)alt * METER_PER_FEET;
 
 	if (alt > ALTITUDE_HIGH_UPPER_LIMIT_FEET) {
-		throw std::out_of_range("altitude outside of supported range");
+		throw std::domain_error("altitude outside of supported range");
 	} else if (alt < ALTITUDE_LOW_UPPER_LIMIT_FEET) {
 		return STANDARD_TEMPERATURE_LOW + TEMPERATURE_LAPSE_RATE_LOW * altM;
 	}
@@ -18,7 +18,7 @@ double IASsure::calculateStaticPressure(double alt)
 	double altM = (double)alt * METER_PER_FEET;
 
 	if (alt > ALTITUDE_HIGH_UPPER_LIMIT_FEET) {
-		throw std::out_of_range("altitude outside of supported range");
+		throw std::domain_error("altitude outside of supported range");
 	} else if (alt < ALTITUDE_LOW_UPPER_LIMIT_FEET) {
 		double beta = GRAVITATIONAL_ACCELERATION_SEA_LEVEL / (SPECIFIC_GAS_CONSTANT_DRY_AIR * TEMPERATURE_LAPSE_RATE_LOW);
 		return STATIC_PRESSURE_LOW * std::pow(1 + ((TEMPERATURE_LAPSE_RATE_LOW * altM) / STANDARD_TEMPERATURE_LOW), -1 * beta);
@@ -36,7 +36,7 @@ double IASsure::calculateSpeedOfSound(double temp)
 double IASsure::calculateDynamicPressure(double ps, double temp, double tas)
 {
 	if (tas <= 0) {
-		throw std::out_of_range("true air speed outside of supported range");
+		throw std::domain_error("true air speed outside of supported range");
 	}
 
 	double a = std::sqrt(HEAT_CAPACITY_RATIO_AIR * SPECIFIC_GAS_CONSTANT_DRY_AIR * temp);
@@ -69,7 +69,7 @@ double IASsure::calculateCAS(double alt, double tas)
 double IASsure::calculateMach(double alt, double tas)
 {
 	if (tas <= 0) {
-		throw std::out_of_range("true air speed outside of supported range");
+		throw std::domain_error("true air speed outside of supported range");
 	}
 
 	// adapted from http://walter.bislins.ch/blog/index.asp?page=Fluggeschwindigkeiten%2C+IAS%2C+TAS%2C+EAS%2C+CAS%2C+Mach#H_Mach_Speed @ 2022-08-03T22:17:28Z
