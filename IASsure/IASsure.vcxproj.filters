@@ -30,12 +30,24 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="weather.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="haversine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IASsure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="calculations.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="weather.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="haversine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

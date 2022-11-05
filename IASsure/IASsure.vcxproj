@@ -165,13 +165,17 @@
   <ItemGroup>
     <ClInclude Include="calculations.h" />
     <ClInclude Include="constants.h" />
+    <ClInclude Include="haversine.h" />
     <ClInclude Include="helpers.h" />
     <ClInclude Include="IASsure.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="weather.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="calculations.cpp" />
+    <ClCompile Include="haversine.cpp" />
     <ClCompile Include="IASsure.cpp" />
+    <ClCompile Include="weather.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="IASsure.rc" />
