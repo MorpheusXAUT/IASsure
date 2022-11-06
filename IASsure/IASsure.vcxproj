@@ -99,7 +99,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalLibraryDirectories>$(SolutionDir)lib\EuroScope;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>EuroScopePlugInDll.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>EuroScopePlugInDll.lib;wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -123,7 +123,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalLibraryDirectories>$(SolutionDir)lib\EuroScope;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>EuroScopePlugInDll.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>EuroScopePlugInDll.lib;wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -167,14 +167,18 @@
     <ClInclude Include="constants.h" />
     <ClInclude Include="haversine.h" />
     <ClInclude Include="helpers.h" />
+    <ClInclude Include="http.h" />
     <ClInclude Include="IASsure.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="thread.h" />
     <ClInclude Include="weather.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="calculations.cpp" />
     <ClCompile Include="haversine.cpp" />
+    <ClCompile Include="http.cpp" />
     <ClCompile Include="IASsure.cpp" />
+    <ClCompile Include="thread.cpp" />
     <ClCompile Include="weather.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -1,5 +1,16 @@
 #include "calculations.h"
 
+double IASsure::calculateTAS(double hdg, double gs, ::IASsure::WeatherReferenceLevel lvl)
+{
+	if (gs <= 0) {
+		throw std::domain_error("ground speed outside of supported range");
+	}
+
+	double c = std::cos(IASsure::degToRad(lvl.windDirection - hdg));
+	double windComponent = c * lvl.windSpeed;
+	return gs + windComponent;
+}
+
 double IASsure::calculateTemperature(double alt)
 {
 	double altM = (double)alt * METER_PER_FEET;
@@ -50,8 +61,10 @@ double IASsure::calculateDynamicPressure(double ps, double temp, double tas)
 	return qc;
 }
 
-double IASsure::calculateCAS(double alt, double tas)
+double IASsure::calculateCAS(double alt, double hdg, double gs, ::IASsure::WeatherReferenceLevel lvl)
 {
+	double tas = calculateTAS(hdg, gs, lvl);
+
 	// adapted from http://walter.bislins.ch/blog/index.asp?page=Fluggeschwindigkeiten%2C+IAS%2C+TAS%2C+EAS%2C+CAS%2C+Mach @ 2022-07-31T20:23:00Z
 	double ps = calculateStaticPressure(alt);
 	double temp = calculateTemperature(alt);
@@ -66,8 +79,10 @@ double IASsure::calculateCAS(double alt, double tas)
 	return cas;
 }
 
-double IASsure::calculateMach(double alt, double tas)
+double IASsure::calculateMach(double alt, double hdg, double gs, ::IASsure::WeatherReferenceLevel lvl)
 {
+	double tas = calculateTAS(hdg, gs, lvl);
+
 	if (tas <= 0) {
 		throw std::domain_error("true air speed outside of supported range");
 	}

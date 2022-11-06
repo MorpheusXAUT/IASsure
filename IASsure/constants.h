@@ -3,11 +3,13 @@
 #include <Windows.h>
 
 constexpr auto PLUGIN_NAME = "IASsure";
-constexpr auto PLUGIN_VERSION = "1.2.1";
+constexpr auto PLUGIN_VERSION = "1.3.0-rc.1";
 constexpr auto PLUGIN_AUTHOR = "Nick Mueller";
 constexpr auto PLUGIN_LICENSE = "(c) 2022, MIT License";
 
 constexpr auto SETTINGS_DELIMITER = '|';
+
+constexpr auto WEATHER_UPDATE_URL = "https://weather.morpheusxaut.net/weather.json";
 
 const int TAG_ITEM_CALCULATED_IAS = 1;
 const int TAG_ITEM_CALCULATED_IAS_TOGGLABLE = 2;

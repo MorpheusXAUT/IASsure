@@ -125,7 +125,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)IASsure\$(Configuration)\;$(VCInstallDir)UnitTest\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>calculations.obj;weather.obj;haversine.obj;weather.obj;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>calculations.obj;weather.obj;haversine.obj;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

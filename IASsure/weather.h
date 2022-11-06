@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 
 #include "haversine.h"
+#include "http.h"
 
 namespace IASsure {
 	class WeatherReferenceLevel {
@@ -42,6 +43,7 @@ namespace IASsure {
 
 	class Weather {
 	public:
+		Weather();
 		Weather(std::string rawJSON);
 		Weather(std::istream& rawJSON);
 

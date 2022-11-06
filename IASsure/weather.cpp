@@ -30,6 +30,10 @@ void IASsure::from_json(const nlohmann::json& j, IASsure::WeatherReferenceLevel&
 	level.windDirection = std::stod(j.at("windhdg").get<std::string>());
 }
 
+IASsure::Weather::Weather()
+{
+}
+
 IASsure::Weather::Weather(std::string rawJSON)
 {
 	this->parse(rawJSON);

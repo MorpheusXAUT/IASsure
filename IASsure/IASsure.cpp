@@ -1,12 +1,17 @@
 ﻿#include "IASsure.h"
 
-IASsure::IASsure::IASsure() : EuroScopePlugIn::CPlugIn(
-	EuroScopePlugIn::COMPATIBILITY_CODE,
-	PLUGIN_NAME,
-	PLUGIN_VERSION,
-	PLUGIN_AUTHOR,
-	PLUGIN_LICENSE
-)
+IASsure::IASsure::IASsure() :
+	EuroScopePlugIn::CPlugIn(
+		EuroScopePlugIn::COMPATIBILITY_CODE,
+		PLUGIN_NAME,
+		PLUGIN_VERSION,
+		PLUGIN_AUTHOR,
+		PLUGIN_LICENSE
+	),
+	debug(false),
+	weatherUpdateInterval(5),
+	loginState(0),
+	weatherUpdater(nullptr)
 {
 	std::ostringstream msg;
 	msg << "Version " << PLUGIN_VERSION << " loaded.";
@@ -15,13 +20,16 @@ IASsure::IASsure::IASsure() : EuroScopePlugIn::CPlugIn(
 
 	this->RegisterTagItems();
 
-	this->debug = false;
-
 	this->LoadSettings();
 }
 
 IASsure::IASsure::~IASsure()
 {
+	if (this->weatherUpdater != nullptr) {
+		this->weatherUpdater->stop();
+		delete this->weatherUpdater;
+		this->weatherUpdater = nullptr;
+	}
 }
 
 bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
@@ -31,7 +39,7 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 	if (args[0] == ".ias") {
 		if (args.size() == 1) {
 			std::ostringstream msg;
-			msg << "Version " << PLUGIN_VERSION << " loaded. Available commands: debug, reset";
+			msg << "Version " << PLUGIN_VERSION << " loaded. Available commands: debug, reset, weather";
 
 			this->LogMessage(msg.str());
 			return true;
@@ -60,6 +68,44 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 			this->calculatedMachToggled.clear();
 			return true;
 		}
+		else if (args[1] == "weather") {
+			if (args.size() == 2) {
+				std::ostringstream msg;
+				if (this->weatherUpdateInterval.count() == 0) {
+					msg << "Automatic weather data update disabled.";
+				}
+				else {
+					msg << "Weather data is automatically updated every " << this->weatherUpdateInterval.count() << " minutes.";
+				}
+				msg << " Use .ias weather <MIN> to change the update interval (set 0 to disable automatic refreshing)";
+
+				this->LogMessage(msg.str(), "Config");
+				return true;
+			}
+
+			int min;
+			try {
+				min = std::stoi(args[2]);
+			}
+			catch (std::exception) {
+				this->LogMessage("Invalid automatic weather data update interval", "Config");
+				return true;
+			}
+
+			this->weatherUpdateInterval = std::chrono::minutes(min);
+
+			if (this->weatherUpdater != nullptr) {
+				this->weatherUpdater->stop();
+				delete this->weatherUpdater;
+				this->weatherUpdater = nullptr;
+			}
+			if (this->weatherUpdateInterval.count() > 0) {
+				this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
+			}
+
+			this->SaveSettings();
+			return true;
+		}
 	}
 
 	return false;
@@ -73,27 +119,27 @@ void IASsure::IASsure::OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan, Eur
 
 	switch (ItemCode) {
 	case TAG_ITEM_CALCULATED_IAS:
-		this->CalculateIAS(RadarTarget, sItemString, pColorCode, pRGB);
+		this->SetCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB);
 		break;
 	case TAG_ITEM_CALCULATED_IAS_ABBREVIATED:
-		this->CalculateIAS(RadarTarget, sItemString, pColorCode, pRGB, true);
+		this->SetCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB, true);
 		break;
 	case TAG_ITEM_CALCULATED_IAS_TOGGLABLE:
 		if (this->calculatedIASToggled.contains(FlightPlan.GetCallsign())) {
-			this->CalculateIAS(RadarTarget, sItemString, pColorCode, pRGB);
+			this->SetCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB);
 		}
 		break;
 	case TAG_ITEM_CALCULATED_IAS_ABBREVIATED_TOGGLABLE:
 		if (this->calculatedIASAbbreviatedToggled.contains(FlightPlan.GetCallsign())) {
-			this->CalculateIAS(RadarTarget, sItemString, pColorCode, pRGB, true);
+			this->SetCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB, true);
 		}
 		break;
 	case TAG_ITEM_CALCULATED_MACH:
-		this->CalculateMach(RadarTarget, sItemString, pColorCode, pRGB);
+		this->SetCalculatedMach(RadarTarget, sItemString, pColorCode, pRGB);
 		break;
 	case TAG_ITEM_CALCULATED_MACH_TOGGLABLE:
 		if (this->calculatedMachToggled.contains(FlightPlan.GetCallsign())) {
-			this->CalculateMach(RadarTarget, sItemString, pColorCode, pRGB);
+			this->SetCalculatedMach(RadarTarget, sItemString, pColorCode, pRGB);
 		}
 		break;
 	}
@@ -113,13 +159,10 @@ void IASsure::IASsure::OnFunctionCall(int FunctionId, const char* sItemString, P
 			return;
 		}
 
-		int ias;
-		try {
-			double cas = ::IASsure::calculateCAS(rt.GetPosition().GetPressureAltitude(), rt.GetPosition().GetReportedGS());
-			ias = ::IASsure::roundToNearest(cas, INTERVAL_REPORTED_IAS);
-		}
-		catch (std::exception const&) {
-			ias = rt.GetPosition().GetReportedGS();
+		int ias = rt.GetPosition().GetReportedGS();
+		double calculatedIAS = this->CalculateIAS(rt);
+		if (calculatedIAS >= 0) {
+			ias = ::IASsure::roundToNearest(calculatedIAS, INTERVAL_REPORTED_IAS);
 		}
 
 		this->OpenPopupList(Area, "Speed", 1);
@@ -150,12 +193,9 @@ void IASsure::IASsure::OnFunctionCall(int FunctionId, const char* sItemString, P
 		}
 
 		int mach = 0;
-		try {
-			double m = ::IASsure::calculateMach(rt.GetPosition().GetPressureAltitude(), rt.GetPosition().GetReportedGS());
-			mach = ::IASsure::roundToNearest(m * 100, INTERVAL_REPORTED_MACH);
-		}
-		catch (std::exception const&) {
-			// no default selection available
+		double calculatedMach = this->CalculateMach(rt);
+		if (calculatedMach >= 0) {
+			mach = ::IASsure::roundToNearest(calculatedMach * 100, INTERVAL_REPORTED_MACH);
 		}
 
 		this->OpenPopupList(Area, "Mach", 1);
@@ -176,6 +216,13 @@ void IASsure::IASsure::OnFunctionCall(int FunctionId, const char* sItemString, P
 	case TAG_FUNC_SET_REPORTED_MACH:
 		this->SetReportedMach(fp, sItemString);
 		break;
+	}
+}
+
+void IASsure::IASsure::OnTimer(int Counter)
+{
+	if (Counter % 2) {
+		this->CheckLoginState();
 	}
 }
 
@@ -240,20 +287,42 @@ void IASsure::IASsure::ToggleCalculatedIAS(const EuroScopePlugIn::CFlightPlan& f
 	}
 }
 
-void IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool abbreviated)
+double IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt)
+{
+	if (!rt.IsValid()) {
+		return -1;
+	}
+
+	int hdg = rt.GetPosition().GetReportedHeading(); // heading in degrees
+	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
+	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
+
+	WeatherReferenceLevel level = WeatherReferenceLevel();
+	if (this->weatherMutex.try_lock_shared()) {
+		level = this->weather.findClosest(rt.GetPosition().GetPosition().m_Latitude, rt.GetPosition().GetPosition().m_Longitude, alt);
+		this->weatherMutex.unlock_shared();
+	}
+	else {
+		this->LogDebugMessage("Failed to acquire weather data lock, fallback to no winds", rt.GetCallsign());
+	}
+
+	try {
+		return ::IASsure::calculateCAS(alt, hdg, gs, level);
+	}
+	catch (std::exception const&) {
+		// gs or alt outside of supported ranges. no value to display in tag
+		return -1;
+	}
+}
+
+void IASsure::IASsure::SetCalculatedIAS(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool abbreviated)
 {
 	if (!rt.IsValid()) {
 		return;
 	}
-	
-	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
-	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
-	
-	double cas;
-	try {
-		cas = ::IASsure::calculateCAS(alt, gs);
-	}
-	catch (std::exception const&) {
+
+	double cas = this->CalculateIAS(rt);
+	if (cas < 0) {
 		// gs or alt outside of supported ranges. no value to display in tag
 		return;
 	}
@@ -326,20 +395,42 @@ void IASsure::IASsure::ToggleCalculatedMach(const EuroScopePlugIn::CFlightPlan& 
 	}
 }
 
-void IASsure::IASsure::CalculateMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB)
+double IASsure::IASsure::CalculateMach(const EuroScopePlugIn::CRadarTarget& rt)
+{
+	if (!rt.IsValid()) {
+		return -1;
+	}
+
+	int hdg = rt.GetPosition().GetReportedHeading(); // heading in degrees
+	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
+	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
+
+	WeatherReferenceLevel level = WeatherReferenceLevel();
+	if (this->weatherMutex.try_lock_shared()) {
+		level = this->weather.findClosest(rt.GetPosition().GetPosition().m_Latitude, rt.GetPosition().GetPosition().m_Longitude, alt);
+		this->weatherMutex.unlock_shared();
+	}
+	else {
+		this->LogDebugMessage("Failed to acquire weather data lock, fallback to no winds", rt.GetCallsign());
+	}
+
+	try {
+		return ::IASsure::calculateMach(alt, hdg, gs, level);
+	}
+	catch (std::exception const&) {
+		// gs or alt outside of supported ranges. no value to display in tag
+		return -1;
+	}
+}
+
+void IASsure::IASsure::SetCalculatedMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB)
 {
 	if (!rt.IsValid()) {
 		return;
 	}
 
-	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
-	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
-
-	double mach;
-	try {
-		mach = ::IASsure::calculateMach(alt, gs);
-	}
-	catch (std::exception const&) {
+	double mach = this->CalculateMach(rt);
+	if (mach < 0) {
 		// gs or alt outside of supported ranges. no value to display in tag
 		return;
 	}
@@ -366,13 +457,68 @@ void IASsure::IASsure::CalculateMach(const EuroScopePlugIn::CRadarTarget& rt, ch
 	strcpy_s(tagItemContent, 16, tag.str().c_str());
 }
 
+void IASsure::IASsure::CheckLoginState()
+{
+	// login state has not changed, nothing to do
+	if (this->loginState == this->GetConnectionType()) {
+		return;
+	}
+
+	this->loginState = this->GetConnectionType();
+
+	switch (this->loginState) {
+	case EuroScopePlugIn::CONNECTION_TYPE_NO:
+	case EuroScopePlugIn::CONNECTION_TYPE_PLAYBACK:
+		// user just disconnected, stop weather updater if it's running
+		if (this->weatherUpdater != nullptr) {
+			this->weatherUpdater->stop();
+			delete this->weatherUpdater;
+			this->weatherUpdater = nullptr;
+		}
+		break;
+	default:
+		// user just connected, start weather update if it's not running yet
+		if (this->weatherUpdater == nullptr && this->weatherUpdateInterval.count() > 0) {
+			this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
+		}
+	}
+}
+
+void IASsure::IASsure::UpdateWeather()
+{
+	this->LogDebugMessage("Retrieving weather data");
+
+	std::string weatherJSON;
+	try {
+		weatherJSON = ::IASsure::HTTP::get(WEATHER_UPDATE_URL);
+	}
+	catch (std::exception) {
+		this->LogMessage("Failed to load weather data");
+		return;
+	}
+
+	this->LogDebugMessage("Locking weather data");
+	std::unique_lock<std::shared_mutex> lock(this->weatherMutex);
+
+	this->LogDebugMessage("Parsing weather data");
+	try {
+		this->weather.parse(weatherJSON);
+	}
+	catch (std::exception) {
+		this->LogMessage("Failed to parse weather data");
+		return;
+	}
+
+	this->LogDebugMessage("Successfully updated weather data");
+}
+
 void IASsure::IASsure::LoadSettings()
 {
 	const char* settings = this->GetDataFromSettings(PLUGIN_NAME);
 	if (settings) {
 		std::vector<std::string> splitSettings = ::IASsure::split(settings, SETTINGS_DELIMITER);
 
-		if (splitSettings.size() < 1) {
+		if (splitSettings.size() < 2) {
 			this->LogMessage("Invalid saved settings found, reverting to default.");
 
 			this->SaveSettings();
@@ -380,6 +526,9 @@ void IASsure::IASsure::LoadSettings()
 		}
 
 		std::istringstream(splitSettings[0]) >> this->debug;
+		int weatherUpdateMin;
+		std::istringstream(splitSettings[1]) >> weatherUpdateMin;
+		this->weatherUpdateInterval = std::chrono::minutes(weatherUpdateMin);
 
 		this->LogDebugMessage("Successfully loaded settings.");
 	}
@@ -391,7 +540,8 @@ void IASsure::IASsure::LoadSettings()
 void IASsure::IASsure::SaveSettings()
 {
 	std::ostringstream ss;
-	ss << this->debug;
+	ss << this->debug << SETTINGS_DELIMITER
+		<< this->weatherUpdateInterval.count();
 
 	this->SaveDataToSettings(PLUGIN_NAME, "Settings", ss.str().c_str());
 }

@@ -9,6 +9,33 @@ namespace IASsureTest
 	TEST_CLASS(Calculations)
 	{
 	public:
+		void AssertTAS(double hdg, double gs, IASsure::WeatherReferenceLevel lvl, double expected)
+		{
+			double tas = IASsure::calculateTAS(hdg, gs, lvl);
+			Assert::AreEqual(expected, tas);
+		}
+
+		TEST_METHOD(TestCalculateTAS)
+		{
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 0 }, 340.00000000000000);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 60 }, 320.00000000000000);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 90 }, 300.00000000000000);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 120 }, 280.00000000000000);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 150 }, 265.35898384862247);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 180 }, 260.00000000000000);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 210 }, 265.35898384862247);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 240 }, 280.00000000000000);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 270 }, 300.00000000000000);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 300 }, 320.00000000000000);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 330 }, 334.64101615137753);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 40, 360 }, 340.00000000000000);
+			AssertTAS(0, 300, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 300.00000000000000);
+
+			Assert::ExpectException<std::domain_error>([]() {
+				double tas = IASsure::calculateTAS(0, -240, IASsure::WeatherReferenceLevel{ 0, 40, 0 });
+				});
+		}
+
 		void AssertTemperature(int alt, double expected)
 		{
 			double temp = IASsure::calculateTemperature(alt);
@@ -88,63 +115,63 @@ namespace IASsureTest
 				});
 		}
 
-		void AssertCAS(int alt, int tas, double expected)
+		void AssertCAS(int alt, double hdg, double gs, IASsure::WeatherReferenceLevel lvl, double expected)
 		{
-			double cas = IASsure::calculateCAS(alt, tas);
+			double cas = IASsure::calculateCAS(alt, hdg, gs, lvl);
 			Assert::AreEqual(expected, cas);
 		}
 
 		TEST_METHOD(TestCalculateCAS)
 		{
-			AssertCAS(-1240, 240, 243.92004106644615);
-			AssertCAS(-1240, 420, 426.30259283784403);
-			AssertCAS(0, 240, 239.72422759440275);
-			AssertCAS(0, 420, 419.51739829020431);
-			AssertCAS(10000, 240, 207.11086025038352);
-			AssertCAS(10000, 420, 366.10637790948800);
-			AssertCAS(38000, 240, 126.95436608760033);
-			AssertCAS(38000, 420, 229.79866924051956);
+			AssertCAS(-1240, 0, 240, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 243.92004106644615);
+			AssertCAS(-1240, 0, 420, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 426.30259283784403);
+			AssertCAS(0, 0, 240, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 239.72422759440275);
+			AssertCAS(0, 0, 420, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 419.51739829020431);
+			AssertCAS(10000, 0, 240, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 207.11086025038352);
+			AssertCAS(10000, 0, 420, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 366.10637790948800);
+			AssertCAS(38000, 0, 240, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 126.95436608760033);
+			AssertCAS(38000, 0, 420, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 229.79866924051956);
 
 			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 69000;
 				int tas = 240;
-				double cas = IASsure::calculateCAS(alt, tas);
+				double cas = IASsure::calculateCAS(alt, 0, tas, IASsure::WeatherReferenceLevel{ 0, 0, 0 });
 				});
 
 			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 0;
 				int tas = -240;
-				double cas = IASsure::calculateCAS(alt, tas);
+				double cas = IASsure::calculateCAS(alt, 0, tas, IASsure::WeatherReferenceLevel{ 0, 0, 0 });
 				});
 		}
 
-		void AssertMach(int alt, int tas, double expected)
+		void AssertMach(int alt, double hdg, double gs, IASsure::WeatherReferenceLevel lvl, double expected)
 		{
-			double mach = IASsure::calculateMach(alt, tas);
+			double mach = IASsure::calculateMach(alt, hdg, gs, lvl);
 			Assert::AreEqual(expected, mach);
 		}
 
 		TEST_METHOD(TestCalculateMach)
 		{
-			AssertMach(-1240, 240, 0.36089698844032253);
-			AssertMach(-1240, 420, 0.63156972977056436);
-			AssertMach(0, 240, 0.36243217763739083);
-			AssertMach(0, 420, 0.63425631086543399);
-			AssertMach(10000, 240, 0.37557352529905308);
-			AssertMach(10000, 420, 0.65725366927334283);
-			AssertMach(38000, 240, 0.41798116657361573);
-			AssertMach(38000, 420, 0.73146704150382746);
+			AssertMach(-1240, 0, 240, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 0.36089698844032253);
+			AssertMach(-1240, 0, 420, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 0.63156972977056436);
+			AssertMach(0, 0, 240, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 0.36243217763739083);
+			AssertMach(0, 0, 420, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 0.63425631086543399);
+			AssertMach(10000, 0, 240, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 0.37557352529905308);
+			AssertMach(10000, 0, 420, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 0.65725366927334283);
+			AssertMach(38000, 0, 240, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 0.41798116657361573);
+			AssertMach(38000, 0, 420, IASsure::WeatherReferenceLevel{ 0, 0, 0 }, 0.73146704150382746);
 
 			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 69000;
 				int tas = 240;
-				double mach = IASsure::calculateMach(alt, tas);
+				double mach = IASsure::calculateMach(alt, 0, tas, IASsure::WeatherReferenceLevel{ 0, 0, 0 });
 				});
 
 			Assert::ExpectException<std::domain_error>([]() {
 				int alt = 0;
 				int tas = -240;
-				double mach = IASsure::calculateMach(alt, tas);
+				double mach = IASsure::calculateMach(alt, 0, tas, IASsure::WeatherReferenceLevel{ 0, 0, 0 });
 				});
 		}
 	};
