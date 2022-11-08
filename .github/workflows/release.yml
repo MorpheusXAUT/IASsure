@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: [ "v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)" ]
+    tags: [ "v*.*.*" ]
 
 env:
   SOLUTION_FILE_PATH: IASsure.sln
@@ -90,9 +90,21 @@ jobs:
       run: gpg --output checksums.txt.sig --detach-sig checksums.txt
 
     - name: Release
+      if: contains(github.ref_name, "-") == false
       uses: softprops/action-gh-release@v1
       with:
         generate_release_notes: true
+        files: |
+          IASsure_${{github.ref_name}}.zip
+          checksums.txt
+          checksums.txt.sig
+
+    - name: Prerelease
+      if: contains(github.ref_name, "-") == true
+      uses: softprops/action-gh-release@v1
+      with:
+        generate_release_notes: true
+        prerelease: true
         files: |
           IASsure_${{github.ref_name}}.zip
           checksums.txt
