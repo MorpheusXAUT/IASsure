@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: [ "v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)" ]
+    tags: [ "v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?" ]
 
 env:
   SOLUTION_FILE_PATH: IASsure.sln
@@ -61,9 +61,9 @@ jobs:
       with:
         trx_files: "artifacts/**/*.trx"
 
-  release:
+  prerelease:
     runs-on: ubuntu-latest
-    name: "Release"
+    name: "Prerelease"
     needs: [build-and-test, publish-test-results]
     
     steps:
@@ -89,10 +89,11 @@ jobs:
     - name: Sign checksums.txt
       run: gpg --output checksums.txt.sig --detach-sig checksums.txt
 
-    - name: Release
+    - name: Prerelease
       uses: softprops/action-gh-release@v1
       with:
         generate_release_notes: true
+        prerelease: true
         files: |
           IASsure_${{github.ref_name}}.zip
           checksums.txt
