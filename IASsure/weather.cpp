@@ -30,7 +30,7 @@ void IASsure::from_json(const nlohmann::json& j, IASsure::WeatherReferenceLevel&
 	level.windDirection = std::stod(j.at("windhdg").get<std::string>());
 }
 
-IASsure::Weather::Weather()
+IASsure::Weather::Weather() : hash(-1)
 {
 }
 
@@ -46,21 +46,31 @@ IASsure::Weather::Weather(std::istream& rawJSON)
 
 void IASsure::Weather::parse(std::string rawJSON)
 {
-	this->points.clear();
-	nlohmann::json j = nlohmann::json::parse(rawJSON);
-	j.get_to<IASsure::Weather>(*this);
+	this->update(nlohmann::json::parse(rawJSON));
 }
 
 void IASsure::Weather::parse(std::istream& rawJSON)
 {
+	this->update(nlohmann::json::parse(rawJSON));
+}
+
+void IASsure::Weather::clear()
+{
+	std::scoped_lock<std::shared_mutex> lock(this->mutex);
 	this->points.clear();
-	nlohmann::json j = nlohmann::json::parse(rawJSON);
-	j.get_to<IASsure::Weather>(*this);
+	this->hash = 0;
 }
 
 IASsure::WeatherReferenceLevel IASsure::Weather::findClosest(double latitude, double longitude, int altitude) const
 {
+	if (!this->mutex.try_lock_shared()) {
+		// cannot acquire read lock (weather data is being updated right now), fallback to no winds in order to not block EuroScope
+		return WeatherReferenceLevel();
+	}
+
 	if (this->points.empty()) {
+		this->mutex.unlock_shared();
+
 		// no reference points available, return empty reference level containing zero winds/temperature
 		return IASsure::WeatherReferenceLevel();
 	}
@@ -76,7 +86,32 @@ IASsure::WeatherReferenceLevel IASsure::Weather::findClosest(double latitude, do
 		}
 	}
 
+	// closest reference point has been found, unlock weather map for updates as we have a copy of altitude data available locally
+	this->mutex.unlock_shared();
+
 	return closest.findClosest(altitude);
+}
+
+void IASsure::Weather::update(const nlohmann::json& j)
+{
+	size_t newHash = 0;
+	{
+		std::shared_lock<std::shared_mutex> slock(this->mutex, std::defer_lock);
+		std::scoped_lock lock(slock);
+
+		newHash = std::hash<nlohmann::json> {}(j);
+		// check if hash matches currently stored data as we don't need to exclusively lock weather data if no update is required
+		if (this->hash == newHash) {
+			return;
+		}
+	}
+
+	std::scoped_lock<std::shared_mutex> lock(this->mutex);
+
+	this->points.clear();
+
+	j.get_to<IASsure::Weather>(*this);
+	this->hash = newHash;
 }
 
 IASsure::WeatherReferenceLevel IASsure::WeatherReferencePoint::findClosest(int altitude) const
@@ -109,4 +144,9 @@ IASsure::WeatherReferenceLevel IASsure::WeatherReferencePoint::findClosest(int a
 	}
 
 	return closest;
+}
+
+bool IASsure::WeatherReferenceLevel::isZero()
+{
+	return this->temperature == 0 && this->windDirection == 0 && this->windSpeed == 0;
 }

@@ -39,7 +39,7 @@ namespace IASsure {
 		std::unordered_set<std::string> calculatedIASAbbreviatedToggled;
 		std::unordered_map<std::string, double> reportedMach;
 		std::unordered_set<std::string> calculatedMachToggled;
-		std::shared_mutex weatherMutex;
+
 		::IASsure::Weather weather;
 		::IASsure::thread::PeriodicAction *weatherUpdater;
 		int loginState;

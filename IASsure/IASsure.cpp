@@ -75,36 +75,56 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 					msg << "Automatic weather data update disabled.";
 				}
 				else {
-					msg << "Weather data is automatically updated every " << this->weatherUpdateInterval.count() << " minutes.";
+					msg << "Weather data is automatically updated every " << this->weatherUpdateInterval.count() << (this->weatherUpdateInterval.count() > 1 ? " minutes." : " minute.");
 				}
-				msg << " Use .ias weather <MIN> to change the update interval (set 0 to disable automatic refreshing)";
+				msg << " Use .ias weather update <MIN> to change the update interval (set 0 to disable automatic refreshing).";
+				msg << " Use .ias weather clear to clear all currently stored weather data, falling back to windless speed calculations";
 
 				this->LogMessage(msg.str(), "Config");
 				return true;
 			}
 
-			int min;
-			try {
-				min = std::stoi(args[2]);
-			}
-			catch (std::exception) {
-				this->LogMessage("Invalid automatic weather data update interval", "Config");
+			if (args[2] == "update") {
+				if (args.size() == 3) {
+					this->LogMessage("Automatic weather data update interval is missing. Usage: .ias weather update <MIN>");
+					return true;
+				}
+				int min;
+				try {
+					min = std::stoi(args[3]);
+				}
+				catch (std::exception) {
+					this->LogMessage("Invalid automatic weather data update interval. Usage: .ias weather update <MIN>", "Config");
+					return true;
+				}
+
+				this->weatherUpdateInterval = std::chrono::minutes(min);
+
+				if (this->weatherUpdater != nullptr) {
+					this->weatherUpdater->stop();
+					delete this->weatherUpdater;
+					this->weatherUpdater = nullptr;
+				}
+
+				std::ostringstream msg;
+				if (this->weatherUpdateInterval.count() > 0) {
+					this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
+					msg << "Automatic weather data update interval set to " << this->weatherUpdateInterval.count() << (this->weatherUpdateInterval.count() > 1 ? " minutes" : " minute");
+				}
+				else {
+					msg << "Automatic weather data update disabled";
+				}
+
+				this->LogMessage(msg.str(), "Config");
+
+				this->SaveSettings();
 				return true;
 			}
-
-			this->weatherUpdateInterval = std::chrono::minutes(min);
-
-			if (this->weatherUpdater != nullptr) {
-				this->weatherUpdater->stop();
-				delete this->weatherUpdater;
-				this->weatherUpdater = nullptr;
+			else if (args[2] == "clear") {
+				this->weather.clear();
+				this->LogMessage("Cleared weather data", "Config");
+				return true;
 			}
-			if (this->weatherUpdateInterval.count() > 0) {
-				this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
-			}
-
-			this->SaveSettings();
-			return true;
 		}
 	}
 
@@ -297,13 +317,9 @@ double IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt)
 	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
 	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
 
-	WeatherReferenceLevel level = WeatherReferenceLevel();
-	if (this->weatherMutex.try_lock_shared()) {
-		level = this->weather.findClosest(rt.GetPosition().GetPosition().m_Latitude, rt.GetPosition().GetPosition().m_Longitude, alt);
-		this->weatherMutex.unlock_shared();
-	}
-	else {
-		this->LogDebugMessage("Failed to acquire weather data lock, fallback to no winds", rt.GetCallsign());
+	WeatherReferenceLevel level = this->weather.findClosest(rt.GetPosition().GetPosition().m_Latitude, rt.GetPosition().GetPosition().m_Longitude, alt);
+	if (level.isZero()) {
+		this->LogDebugMessage("No weather data available, fallback to CAS calculation without winds", rt.GetCallsign());
 	}
 
 	try {
@@ -405,13 +421,9 @@ double IASsure::IASsure::CalculateMach(const EuroScopePlugIn::CRadarTarget& rt)
 	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
 	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
 
-	WeatherReferenceLevel level = WeatherReferenceLevel();
-	if (this->weatherMutex.try_lock_shared()) {
-		level = this->weather.findClosest(rt.GetPosition().GetPosition().m_Latitude, rt.GetPosition().GetPosition().m_Longitude, alt);
-		this->weatherMutex.unlock_shared();
-	}
-	else {
-		this->LogDebugMessage("Failed to acquire weather data lock, fallback to no winds", rt.GetCallsign());
+	WeatherReferenceLevel level = this->weather.findClosest(rt.GetPosition().GetPosition().m_Latitude, rt.GetPosition().GetPosition().m_Longitude, alt);
+	if (level.isZero()) {
+		this->LogDebugMessage("No weather data available, fallback to Mach calculation without winds", rt.GetCallsign());
 	}
 
 	try {
@@ -486,30 +498,27 @@ void IASsure::IASsure::CheckLoginState()
 
 void IASsure::IASsure::UpdateWeather()
 {
-	this->LogDebugMessage("Retrieving weather data");
+	this->LogDebugMessage("Retrieving weather data", "Weather");
 
 	std::string weatherJSON;
 	try {
 		weatherJSON = ::IASsure::HTTP::get(WEATHER_UPDATE_URL);
 	}
 	catch (std::exception) {
-		this->LogMessage("Failed to load weather data");
+		this->LogMessage("Failed to load weather data", "Weather");
 		return;
 	}
 
-	this->LogDebugMessage("Locking weather data");
-	std::unique_lock<std::shared_mutex> lock(this->weatherMutex);
-
-	this->LogDebugMessage("Parsing weather data");
+	this->LogDebugMessage("Parsing weather data", "Weather");
 	try {
 		this->weather.parse(weatherJSON);
 	}
 	catch (std::exception) {
-		this->LogMessage("Failed to parse weather data");
+		this->LogMessage("Failed to parse weather data", "Weather");
 		return;
 	}
 
-	this->LogDebugMessage("Successfully updated weather data");
+	this->LogDebugMessage("Successfully updated weather data", "Weather");
 }
 
 void IASsure::IASsure::LoadSettings()

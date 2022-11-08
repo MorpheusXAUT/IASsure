@@ -4,6 +4,7 @@
 #include <istream>
 #include <map>
 #include <string>
+#include <shared_mutex>
 
 #include <nlohmann/json.hpp>
 
@@ -16,6 +17,8 @@ namespace IASsure {
 		double temperature;
 		double windSpeed;
 		double windDirection;
+
+		bool isZero();
 
 		friend void from_json(const nlohmann::json& j, WeatherReferenceLevel& level);
 	};
@@ -49,11 +52,17 @@ namespace IASsure {
 
 		void parse(std::string rawJSON);
 		void parse(std::istream& rawJSON);
+		void clear();
+
 		WeatherReferenceLevel findClosest(double latitude, double longitude, int altitude) const;
 
 		friend void from_json(const nlohmann::json& j, Weather& weather);
 	private:
+		mutable std::shared_mutex mutex;
+		size_t hash;
 		WeatherInfo info;
 		std::map<std::string, WeatherReferencePoint> points;
+
+		void update(const nlohmann::json& j);
 	};
 }
