@@ -40,7 +40,7 @@ jobs:
     - name: Upload plugin DLL artifact
       uses: actions/upload-artifact@v3
       with:
-        name: plugin-dll
+        name: IASsure.dll
         path: '${{env.BUILD_CONFIGURATION}}/IASsure.dll'
 
   publish-test-results:
@@ -57,7 +57,7 @@ jobs:
         path: artifacts
 
     - name: Publish Test Results
-      uses: EnricoMi/publish-unit-test-result-action/composite@v2
+      uses: EnricoMi/publish-unit-test-result-action/composite@v2.2.0
       with:
         trx_files: "artifacts/**/*.trx"
 
@@ -72,7 +72,7 @@ jobs:
     - name: Download Artifacts
       uses: actions/download-artifact@v2
       with:
-        name: plugin-dll
+        name: IASsure.dll
     
     - name: Create Archive
       run: zip IASsure_${{github.ref_name}}.zip IASsure.dll README.md LICENSE
