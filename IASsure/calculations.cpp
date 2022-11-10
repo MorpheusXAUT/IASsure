@@ -67,7 +67,14 @@ double IASsure::calculateCAS(double alt, double hdg, double gs, ::IASsure::Weath
 
 	// adapted from http://walter.bislins.ch/blog/index.asp?page=Fluggeschwindigkeiten%2C+IAS%2C+TAS%2C+EAS%2C+CAS%2C+Mach @ 2022-07-31T20:23:00Z
 	double ps = calculateStaticPressure(alt);
-	double temp = calculateTemperature(alt);
+	double temp;
+	if (lvl.isZero()) {
+		// fallback to ISA temperature in case no wind/temperature data is available 
+		temp = calculateTemperature(alt);
+	}
+	else {
+		temp = lvl.temperature;
+	}
 	double qc = calculateDynamicPressure(ps, temp, tas);
 
 	double tmp1 = 2 / (HEAT_CAPACITY_RATIO_AIR - 1);
@@ -88,7 +95,14 @@ double IASsure::calculateMach(double alt, double hdg, double gs, ::IASsure::Weat
 	}
 
 	// adapted from http://walter.bislins.ch/blog/index.asp?page=Fluggeschwindigkeiten%2C+IAS%2C+TAS%2C+EAS%2C+CAS%2C+Mach#H_Mach_Speed @ 2022-08-03T22:17:28Z
-	double temp = calculateTemperature(alt);
+	double temp;
+	if (lvl.isZero()) {
+		// fallback to ISA temperature in case no wind/temperature data is available 
+		temp = calculateTemperature(alt);
+	}
+	else {
+		temp = lvl.temperature;
+	}
 	double a = calculateSpeedOfSound(temp);
 
 	double mach = (tas * METERS_PER_SECOND_PER_KNOT) / a;
