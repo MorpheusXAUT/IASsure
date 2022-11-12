@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <Windows.h>
 
 namespace IASsure {
 	inline std::vector<std::string> split(const std::string& s, char delim = ' ')
