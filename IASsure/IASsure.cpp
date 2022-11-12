@@ -11,7 +11,8 @@ IASsure::IASsure::IASsure() :
 	debug(false),
 	weatherUpdateInterval(5),
 	loginState(0),
-	weatherUpdater(nullptr)
+	weatherUpdater(nullptr),
+	weatherUpdateURL(DEFAULT_WEATHER_UPDATE_URL)
 {
 	std::ostringstream msg;
 	msg << "Version " << PLUGIN_VERSION << " loaded.";
@@ -78,7 +79,8 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 					msg << "Weather data is automatically updated every " << this->weatherUpdateInterval.count() << (this->weatherUpdateInterval.count() > 1 ? " minutes." : " minute.");
 				}
 				msg << " Use .ias weather update <MIN> to change the update interval (set 0 to disable automatic refreshing).";
-				msg << " Use .ias weather clear to clear all currently stored weather data, falling back to windless speed calculations";
+				msg << " Use .ias weather url <URL> to set the URL to retrieve weather data from.";
+				msg << " Use .ias weather clear to clear all currently stored weather data, falling back to windless speed calculations.";
 
 				this->LogMessage(msg.str(), "Config");
 				return true;
@@ -114,6 +116,32 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 				else {
 					msg << "Automatic weather data update disabled";
 				}
+
+				this->LogMessage(msg.str(), "Config");
+
+				this->SaveSettings();
+				return true;
+			}
+			else if (args[2] == "url") {
+				if (args.size() == 3) {
+					this->LogMessage("Weather update URL is missing. Usage: .ias weather url <URL>");
+					return true;
+				}
+
+				this->weatherUpdateURL = args[3];
+
+				if (this->weatherUpdater != nullptr) {
+					this->weatherUpdater->stop();
+					delete this->weatherUpdater;
+					this->weatherUpdater = nullptr;
+				}
+
+				if (this->weatherUpdateInterval.count() > 0) {
+					this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
+				}
+
+				std::ostringstream msg;
+				msg << "Weather update URL set to " << this->weatherUpdateURL;
 
 				this->LogMessage(msg.str(), "Config");
 
@@ -318,9 +346,6 @@ double IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt)
 	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
 
 	WeatherReferenceLevel level = this->weather.findClosest(rt.GetPosition().GetPosition().m_Latitude, rt.GetPosition().GetPosition().m_Longitude, alt);
-	if (level.isZero()) {
-		this->LogDebugMessage("No weather data available, fallback to CAS calculation without winds", rt.GetCallsign());
-	}
 
 	try {
 		return ::IASsure::calculateCAS(alt, hdg, gs, level);
@@ -422,9 +447,6 @@ double IASsure::IASsure::CalculateMach(const EuroScopePlugIn::CRadarTarget& rt)
 	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
 
 	WeatherReferenceLevel level = this->weather.findClosest(rt.GetPosition().GetPosition().m_Latitude, rt.GetPosition().GetPosition().m_Longitude, alt);
-	if (level.isZero()) {
-		this->LogDebugMessage("No weather data available, fallback to Mach calculation without winds", rt.GetCallsign());
-	}
 
 	try {
 		return ::IASsure::calculateMach(alt, hdg, gs, level);
@@ -502,7 +524,7 @@ void IASsure::IASsure::UpdateWeather()
 
 	std::string weatherJSON;
 	try {
-		weatherJSON = ::IASsure::HTTP::get(WEATHER_UPDATE_URL);
+		weatherJSON = ::IASsure::HTTP::get(this->weatherUpdateURL);
 	}
 	catch (std::exception) {
 		this->LogMessage("Failed to load weather data", "Weather");
@@ -527,7 +549,7 @@ void IASsure::IASsure::LoadSettings()
 	if (settings) {
 		std::vector<std::string> splitSettings = ::IASsure::split(settings, SETTINGS_DELIMITER);
 
-		if (splitSettings.size() < 2) {
+		if (splitSettings.size() < 3) {
 			this->LogMessage("Invalid saved settings found, reverting to default.");
 
 			this->SaveSettings();
@@ -538,6 +560,7 @@ void IASsure::IASsure::LoadSettings()
 		int weatherUpdateMin;
 		std::istringstream(splitSettings[1]) >> weatherUpdateMin;
 		this->weatherUpdateInterval = std::chrono::minutes(weatherUpdateMin);
+		this->weatherUpdateURL = splitSettings[2];
 
 		this->LogDebugMessage("Successfully loaded settings.");
 	}
@@ -550,7 +573,8 @@ void IASsure::IASsure::SaveSettings()
 {
 	std::ostringstream ss;
 	ss << this->debug << SETTINGS_DELIMITER
-		<< this->weatherUpdateInterval.count();
+		<< this->weatherUpdateInterval.count() << SETTINGS_DELIMITER
+		<< this->weatherUpdateURL;
 
 	this->SaveDataToSettings(PLUGIN_NAME, "Settings", ss.str().c_str());
 }

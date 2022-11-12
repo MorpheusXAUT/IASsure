@@ -33,6 +33,7 @@ namespace IASsure {
 	private:
 		bool debug;
 		std::chrono::minutes weatherUpdateInterval;
+		std::string weatherUpdateURL;
 
 		std::unordered_map<std::string, int> reportedIAS;
 		std::unordered_set<std::string> calculatedIASToggled;
