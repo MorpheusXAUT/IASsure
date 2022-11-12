@@ -34,3 +34,5 @@ const int INTERVAL_REPORTED_IAS = 5;
 const int MIN_REPORTED_MACH = 01;
 const int MAX_REPORTED_MACH = 99;
 const int INTERVAL_REPORTED_MACH = 1;
+
+constexpr auto CONFIG_FILE_NAME = "config.json";

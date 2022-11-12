@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <shared_mutex>
 #include <sstream>
@@ -61,9 +63,11 @@ namespace IASsure {
 
 		void CheckLoginState();
 		void UpdateWeather();
+		void ResetWeatherUpdater();
 
 		void LoadSettings();
 		void SaveSettings();
+		void TryLoadConfigFile();
 
 		void LogMessage(std::string message);
 		void LogMessage(std::string message, std::string type);

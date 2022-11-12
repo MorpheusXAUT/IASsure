@@ -52,4 +52,16 @@ namespace IASsure {
 	{
 		return roundToNearest(std::lround(num), multiple);
 	}
+
+	extern "C" IMAGE_DOS_HEADER __ImageBase;
+
+	inline std::string getPluginDirectory()
+	{
+		char buf[MAX_PATH] = { 0 };
+		GetModuleFileName(HINSTANCE(&__ImageBase), buf, MAX_PATH);
+
+		std::string::size_type pos = std::string(buf).find_last_of("\\/");
+
+		return std::string(buf).substr(0, pos);
+	}
 }

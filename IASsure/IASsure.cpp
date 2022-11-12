@@ -22,6 +22,7 @@ IASsure::IASsure::IASsure() :
 	this->RegisterTagItems();
 
 	this->LoadSettings();
+	this->TryLoadConfigFile();
 }
 
 IASsure::IASsure::~IASsure()
@@ -101,16 +102,10 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 				}
 
 				this->weatherUpdateInterval = std::chrono::minutes(min);
-
-				if (this->weatherUpdater != nullptr) {
-					this->weatherUpdater->stop();
-					delete this->weatherUpdater;
-					this->weatherUpdater = nullptr;
-				}
+				this->ResetWeatherUpdater();
 
 				std::ostringstream msg;
 				if (this->weatherUpdateInterval.count() > 0) {
-					this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
 					msg << "Automatic weather data update interval set to " << this->weatherUpdateInterval.count() << (this->weatherUpdateInterval.count() > 1 ? " minutes" : " minute");
 				}
 				else {
@@ -129,16 +124,7 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 				}
 
 				this->weatherUpdateURL = args[3];
-
-				if (this->weatherUpdater != nullptr) {
-					this->weatherUpdater->stop();
-					delete this->weatherUpdater;
-					this->weatherUpdater = nullptr;
-				}
-
-				if (this->weatherUpdateInterval.count() > 0) {
-					this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
-				}
+				this->ResetWeatherUpdater();
 
 				std::ostringstream msg;
 				msg << "Weather update URL set to " << this->weatherUpdateURL;
@@ -543,6 +529,19 @@ void IASsure::IASsure::UpdateWeather()
 	this->LogDebugMessage("Successfully updated weather data", "Weather");
 }
 
+void IASsure::IASsure::ResetWeatherUpdater()
+{
+	if (this->weatherUpdater != nullptr) {
+		this->weatherUpdater->stop();
+		delete this->weatherUpdater;
+		this->weatherUpdater = nullptr;
+	}
+
+	if (this->weatherUpdateInterval.count() > 0) {
+		this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
+	}
+}
+
 void IASsure::IASsure::LoadSettings()
 {
 	const char* settings = this->GetDataFromSettings(PLUGIN_NAME);
@@ -577,6 +576,41 @@ void IASsure::IASsure::SaveSettings()
 		<< this->weatherUpdateURL;
 
 	this->SaveDataToSettings(PLUGIN_NAME, "Settings", ss.str().c_str());
+}
+
+void IASsure::IASsure::TryLoadConfigFile()
+{
+	this->LogDebugMessage("Attempting to load config file");
+
+	nlohmann::json cfg;
+	try {
+		std::filesystem::path base(::IASsure::getPluginDirectory());
+		base.append(CONFIG_FILE_NAME);
+
+		std::ifstream ifs(base);
+		if (!ifs.good()) {
+			this->LogDebugMessage("Failed to read config file, might not exist. Ignoring", "Config");
+			return;
+		}
+
+		cfg = nlohmann::json::parse(ifs);
+	}
+	catch (std::exception) {
+		this->LogMessage("Failed to read config file", "Config");
+	}
+
+	try {
+		auto& weatherCfg = cfg.at("weather");
+		this->weatherUpdateURL = weatherCfg.value<std::string>("url", this->weatherUpdateURL);
+		this->weatherUpdateInterval = std::chrono::minutes(weatherCfg.value<int>("update", this->weatherUpdateInterval.count()));
+
+		this->ResetWeatherUpdater();
+	}
+	catch (std::exception) {
+		this->LogDebugMessage("Failed to parse weather section of config file, might not exist. Ignoring", "Config");
+	}
+
+	this->LogDebugMessage("Successfully loaded config file");
 }
 
 void IASsure::IASsure::LogMessage(std::string message)

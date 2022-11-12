@@ -34,12 +34,12 @@ IASsure::Weather::Weather() : hash(-1)
 {
 }
 
-IASsure::Weather::Weather(std::string rawJSON)
+IASsure::Weather::Weather(std::string rawJSON) : hash(-1)
 {
 	this->parse(rawJSON);
 }
 
-IASsure::Weather::Weather(std::istream& rawJSON)
+IASsure::Weather::Weather(std::istream& rawJSON) : hash(-1)
 {
 	this->parse(rawJSON);
 }
