@@ -36,6 +36,7 @@ namespace IASsure {
 		bool debug;
 		std::chrono::minutes weatherUpdateInterval;
 		std::string weatherUpdateURL;
+		bool useReportedGS;
 
 		std::unordered_map<std::string, int> reportedIAS;
 		std::unordered_set<std::string> calculatedIASToggled;
@@ -63,6 +64,8 @@ namespace IASsure {
 
 		void CheckLoginState();
 		void UpdateWeather();
+		void StartWeatherUpdater();
+		void StopWeatherUpdater();
 		void ResetWeatherUpdater();
 
 		void LoadSettings();

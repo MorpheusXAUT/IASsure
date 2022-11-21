@@ -9,8 +9,6 @@ constexpr auto PLUGIN_LICENSE = "(c) 2022, MIT License";
 
 constexpr auto SETTINGS_DELIMITER = '|';
 
-constexpr auto DEFAULT_WEATHER_UPDATE_URL = "https://weather.morpheusxaut.net/weather.json";
-
 const int TAG_ITEM_CALCULATED_IAS = 1;
 const int TAG_ITEM_CALCULATED_IAS_TOGGLABLE = 2;
 const int TAG_ITEM_CALCULATED_IAS_ABBREVIATED = 3;

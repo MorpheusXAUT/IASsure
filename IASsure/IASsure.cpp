@@ -12,7 +12,7 @@ IASsure::IASsure::IASsure() :
 	weatherUpdateInterval(5),
 	loginState(0),
 	weatherUpdater(nullptr),
-	weatherUpdateURL(DEFAULT_WEATHER_UPDATE_URL)
+	useReportedGS(true)
 {
 	std::ostringstream msg;
 	msg << "Version " << PLUGIN_VERSION << " loaded.";
@@ -21,17 +21,13 @@ IASsure::IASsure::IASsure() :
 
 	this->RegisterTagItems();
 
-	this->LoadSettings();
 	this->TryLoadConfigFile();
+	this->LoadSettings();
 }
 
 IASsure::IASsure::~IASsure()
 {
-	if (this->weatherUpdater != nullptr) {
-		this->weatherUpdater->stop();
-		delete this->weatherUpdater;
-		this->weatherUpdater = nullptr;
-	}
+	this->StopWeatherUpdater();
 }
 
 bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
@@ -41,7 +37,7 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 	if (args[0] == ".ias") {
 		if (args.size() == 1) {
 			std::ostringstream msg;
-			msg << "Version " << PLUGIN_VERSION << " loaded. Available commands: debug, reset, weather";
+			msg << "Version " << PLUGIN_VERSION << " loaded. Available commands: debug, reset, weather, gs";
 
 			this->LogMessage(msg.str());
 			return true;
@@ -140,6 +136,19 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 				return true;
 			}
 		}
+		else if (args[1] == "gs") {
+			if (this->useReportedGS) {
+				this->LogMessage("Switched to using ground speed estimated by EuroScope for CAS/Mach calculations", "Config");
+			}
+			else {
+				this->LogMessage("Switched to using ground speed reported by pilot client for CAS/Mach calculations", "Config");
+			}
+
+			this->useReportedGS = !this->useReportedGS;
+
+			this->SaveSettings();
+			return true;
+		}
 	}
 
 	return false;
@@ -193,7 +202,7 @@ void IASsure::IASsure::OnFunctionCall(int FunctionId, const char* sItemString, P
 			return;
 		}
 
-		int ias = rt.GetPosition().GetReportedGS();
+		int ias = this->useReportedGS ? rt.GetPosition().GetReportedGS() : rt.GetGS();
 		double calculatedIAS = this->CalculateIAS(rt);
 		if (calculatedIAS >= 0) {
 			ias = ::IASsure::roundToNearest(calculatedIAS, INTERVAL_REPORTED_IAS);
@@ -328,7 +337,7 @@ double IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt)
 	}
 
 	int hdg = rt.GetPosition().GetReportedHeading(); // heading in degrees
-	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
+	int gs = this->useReportedGS ? rt.GetPosition().GetReportedGS() : rt.GetGS(); // ground speed in knots
 	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
 
 	WeatherReferenceLevel level = this->weather.findClosest(rt.GetPosition().GetPosition().m_Latitude, rt.GetPosition().GetPosition().m_Longitude, alt);
@@ -429,7 +438,7 @@ double IASsure::IASsure::CalculateMach(const EuroScopePlugIn::CRadarTarget& rt)
 	}
 
 	int hdg = rt.GetPosition().GetReportedHeading(); // heading in degrees
-	int gs = rt.GetPosition().GetReportedGS(); // ground speed in knots
+	int gs = this->useReportedGS ? rt.GetPosition().GetReportedGS() : rt.GetGS(); // ground speed in knots
 	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
 
 	WeatherReferenceLevel level = this->weather.findClosest(rt.GetPosition().GetPosition().m_Latitude, rt.GetPosition().GetPosition().m_Longitude, alt);
@@ -490,17 +499,11 @@ void IASsure::IASsure::CheckLoginState()
 	case EuroScopePlugIn::CONNECTION_TYPE_NO:
 	case EuroScopePlugIn::CONNECTION_TYPE_PLAYBACK:
 		// user just disconnected, stop weather updater if it's running
-		if (this->weatherUpdater != nullptr) {
-			this->weatherUpdater->stop();
-			delete this->weatherUpdater;
-			this->weatherUpdater = nullptr;
-		}
+		this->StopWeatherUpdater();
 		break;
 	default:
 		// user just connected, start weather update if it's not running yet
-		if (this->weatherUpdater == nullptr && this->weatherUpdateInterval.count() > 0) {
-			this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
-		}
+		this->StartWeatherUpdater();
 	}
 }
 
@@ -529,17 +532,31 @@ void IASsure::IASsure::UpdateWeather()
 	this->LogDebugMessage("Successfully updated weather data", "Weather");
 }
 
-void IASsure::IASsure::ResetWeatherUpdater()
+void IASsure::IASsure::StartWeatherUpdater()
+{
+	if (this->weatherUpdateURL.empty() && this->weatherUpdateInterval.count() > 0) {
+		this->LogMessage("Weather update URL is empty, cannot fetch weather data for calculations. Configure via config file (config.json in same directory as IASsure.dll) or .ias weather url <URL>.", "Config");
+		return;
+	}
+
+	if (this->weatherUpdater == nullptr && this->weatherUpdateInterval.count() > 0) {
+		this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
+	}
+}
+
+void IASsure::IASsure::StopWeatherUpdater()
 {
 	if (this->weatherUpdater != nullptr) {
 		this->weatherUpdater->stop();
 		delete this->weatherUpdater;
 		this->weatherUpdater = nullptr;
 	}
+}
 
-	if (this->weatherUpdateInterval.count() > 0) {
-		this->weatherUpdater = new ::IASsure::thread::PeriodicAction(std::chrono::milliseconds(0), std::chrono::milliseconds(this->weatherUpdateInterval), std::bind(&IASsure::UpdateWeather, this));
-	}
+void IASsure::IASsure::ResetWeatherUpdater()
+{
+	this->StopWeatherUpdater();
+	this->StartWeatherUpdater();
 }
 
 void IASsure::IASsure::LoadSettings()
@@ -548,7 +565,7 @@ void IASsure::IASsure::LoadSettings()
 	if (settings) {
 		std::vector<std::string> splitSettings = ::IASsure::split(settings, SETTINGS_DELIMITER);
 
-		if (splitSettings.size() < 3) {
+		if (splitSettings.size() < 4) {
 			this->LogMessage("Invalid saved settings found, reverting to default.");
 
 			this->SaveSettings();
@@ -559,9 +576,12 @@ void IASsure::IASsure::LoadSettings()
 		int weatherUpdateMin;
 		std::istringstream(splitSettings[1]) >> weatherUpdateMin;
 		this->weatherUpdateInterval = std::chrono::minutes(weatherUpdateMin);
-		this->weatherUpdateURL = splitSettings[2];
+		if (!splitSettings[2].empty()) {
+			this->weatherUpdateURL = splitSettings[2];
+		}
+		std::istringstream(splitSettings[3]) >> this->useReportedGS;
 
-		this->LogDebugMessage("Successfully loaded settings.");
+		this->LogDebugMessage("Successfully loaded settings.", "Config");
 	}
 	else {
 		this->LogMessage("No saved settings found, using defaults.");
@@ -573,14 +593,15 @@ void IASsure::IASsure::SaveSettings()
 	std::ostringstream ss;
 	ss << this->debug << SETTINGS_DELIMITER
 		<< this->weatherUpdateInterval.count() << SETTINGS_DELIMITER
-		<< this->weatherUpdateURL;
+		<< this->weatherUpdateURL << SETTINGS_DELIMITER
+		<< this->useReportedGS;
 
 	this->SaveDataToSettings(PLUGIN_NAME, "Settings", ss.str().c_str());
 }
 
 void IASsure::IASsure::TryLoadConfigFile()
 {
-	this->LogDebugMessage("Attempting to load config file");
+	this->LogDebugMessage("Attempting to load config file", "Config");
 
 	nlohmann::json cfg;
 	try {
@@ -610,7 +631,7 @@ void IASsure::IASsure::TryLoadConfigFile()
 		this->LogDebugMessage("Failed to parse weather section of config file, might not exist. Ignoring", "Config");
 	}
 
-	this->LogDebugMessage("Successfully loaded config file");
+	this->LogDebugMessage("Successfully loaded config file", "Config");
 }
 
 void IASsure::IASsure::LogMessage(std::string message)
