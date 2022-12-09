@@ -81,7 +81,7 @@ double IASsure::calculateCAS(double alt, double hdg, double gs, ::IASsure::Weath
 	double tmp2 = std::pow((qc / ATMOSPHERIC_PRESSURE_SEA_LEVEL) + 1, (HEAT_CAPACITY_RATIO_AIR - 1) / HEAT_CAPACITY_RATIO_AIR);
 	double tmp3 = tmp1 * (tmp2 - 1);
 
-	double cas = SPEED_OF_SOUND_LOW * std::sqrt(tmp3) * KNOTS_PER_METER_PER_SECOND;
+	double cas = SPEED_OF_SOUND * std::sqrt(tmp3) * KNOTS_PER_METER_PER_SECOND;
 
 	return cas;
 }

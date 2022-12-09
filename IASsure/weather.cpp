@@ -18,8 +18,8 @@ void IASsure::from_json(const nlohmann::json& j, WeatherReferencePoint& point)
 	point.latitude = std::stod(coords.at("lat").get<std::string>());
 	point.longitude = std::stod(coords.at("long").get<std::string>());
 
-	for (auto it = j.at("levels").begin(); it != j.at("levels").end(); it++) {
-		point.levels.insert({ std::stoi(it.key()), it.value().get<IASsure::WeatherReferenceLevel>() });
+	for (auto const& [key, val] : j.at("levels").items()) {
+		point.levels.insert({ std::stoi(key), val.get<IASsure::WeatherReferenceLevel>() });
 	}
 }
 
@@ -78,11 +78,11 @@ IASsure::WeatherReferenceLevel IASsure::Weather::findClosest(double latitude, do
 	double distance = -1;
 	WeatherReferencePoint closest;
 
-	for (auto it = this->points.begin(); it != this->points.end(); it++) {
-		double d = IASsure::haversine(latitude, longitude, it->second.latitude, it->second.longitude);
+	for (auto const& [wp, point] : this->points) {
+		double d = IASsure::haversine(latitude, longitude, point.latitude, point.longitude);
 		if (distance < 0 || d < distance) {
 			distance = d;
-			closest = it->second;
+			closest = point;
 		}
 	}
 
@@ -128,19 +128,19 @@ IASsure::WeatherReferenceLevel IASsure::WeatherReferencePoint::findClosest(int a
 	// levels map contains ordered (ascending) keys, highest available data will be last in map.
 	// reverse iterator starts from the end of the map, returning last item.
 	IASsure::WeatherReferenceLevel closest = this->levels.rbegin()->second;
-	for (auto it = this->levels.begin(); it != this->levels.end(); it++) {
-		if (fl == it->first) {
-			return it->second;
+	for (auto const& [refFL, level] : this->levels) {
+		if (fl == refFL) {
+			return level;
 		}
 
-		int diff = std::abs(it->first - fl);
+		int diff = std::abs(refFL - fl);
 		if (prevDiff > 0 && diff > prevDiff) {
 			// distances will continue increasing, no need to search further
 			break;
 		}
 
 		prevDiff = diff;
-		closest = it->second;
+		closest = level;
 	}
 
 	return closest;
