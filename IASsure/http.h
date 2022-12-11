@@ -12,6 +12,8 @@ namespace IASsure {
 		std::string get(const std::string url);
 		std::string get(const char* const url);
 
+		std::string getLastErrorMessage(std::string prefix = "");
+
 		const std::string USER_AGENT = "IASsure/" + std::string(PLUGIN_VERSION);
 	}
 }

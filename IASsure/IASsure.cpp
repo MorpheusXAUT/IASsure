@@ -167,7 +167,7 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 					this->prefixIAS = "";
 				}
 				else {
-					if (args[3].size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+					if (args[3].size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
 						std::ostringstream msg;
 						msg << "Indicated air speed prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less";
 						this->LogMessage(msg.str(), "Config");
@@ -187,7 +187,7 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 					this->prefixMach = "";
 				}
 				else {
-					if (args[3].size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+					if (args[3].size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
 						std::ostringstream msg;
 						msg << "Mach number prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less";
 						this->LogMessage(msg.str(), "Config");
@@ -666,8 +666,9 @@ void IASsure::IASsure::UpdateWeather()
 	try {
 		weatherJSON = ::IASsure::HTTP::get(this->weatherUpdateURL);
 	}
-	catch (std::exception) {
+	catch (std::exception ex) {
 		this->LogMessage("Failed to load weather data", "Weather");
+		this->LogDebugMessage(ex.what(), "Weather");
 		return;
 	}
 
@@ -675,8 +676,9 @@ void IASsure::IASsure::UpdateWeather()
 	try {
 		this->weather.parse(weatherJSON);
 	}
-	catch (std::exception) {
+	catch (std::exception ex) {
 		this->LogMessage("Failed to parse weather data", "Weather");
+		this->LogDebugMessage(ex.what(), "Weather");
 		return;
 	}
 
@@ -741,7 +743,7 @@ void IASsure::IASsure::LoadSettings()
 		else {
 			this->machDigits = machDigits;
 		}
-		if (splitSettings[5].size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+		if (splitSettings[5].size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
 			std::ostringstream msg;
 			msg << "Indicated air speed prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (I)";
 			this->LogMessage(msg.str(), "Config");
@@ -749,7 +751,7 @@ void IASsure::IASsure::LoadSettings()
 		else {
 			this->prefixIAS = splitSettings[5];
 		}
-		if (splitSettings[6].size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+		if (splitSettings[6].size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
 			std::ostringstream msg;
 			msg << "Mach number prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (I)";
 			this->LogMessage(msg.str(), "Config");
@@ -833,7 +835,7 @@ void IASsure::IASsure::TryLoadConfigFile()
 	try {
 		auto& prefixCfg = cfg.at("prefix");
 		std::string prefixIAS = prefixCfg.value<std::string>("ias", this->prefixIAS);
-		if (prefixIAS.size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+		if (prefixIAS.size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
 			std::ostringstream msg;
 			msg << "Indicated air speed prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (" << this->prefixIAS << ")";
 			this->LogMessage(msg.str(), "Config");
@@ -842,7 +844,7 @@ void IASsure::IASsure::TryLoadConfigFile()
 			this->prefixIAS = prefixIAS;
 		}
 		std::string prefixMach = prefixCfg.value<std::string>("mach", this->prefixIAS);
-		if (prefixMach.size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+		if (prefixMach.size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
 			std::ostringstream msg;
 			msg << "Mach number prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (" << this->prefixMach << ")";
 			this->LogMessage(msg.str(), "Config");
