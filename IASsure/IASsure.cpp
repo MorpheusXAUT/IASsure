@@ -13,8 +13,8 @@ IASsure::IASsure::IASsure() :
 	loginState(0),
 	weatherUpdater(nullptr),
 	useReportedGS(true),
-	prefixIAS(true),
-	prefixMach(true),
+	prefixIAS("I"),
+	prefixMach("M"),
 	machDigits(2),
 	machThresholdFL(24500)
 {
@@ -157,32 +157,46 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 		}
 		else if (args[1] == "prefix") {
 			if (args.size() == 2) {
-				this->LogMessage("Use .ias prefix ias to toggle the indicated air speed prefix. Use .ias prefix mach to toggle the mach number prefix.", "Config");
+				this->LogMessage("Use .ias prefix ias <PREFIX> to set the indicated air speed prefix. Use .ias prefix mach <PREFIX> to set the mach number prefix.", "Config");
 				return true;
 			}
 
 			if (args[2] == "ias") {
-				if (this->prefixIAS) {
+				if (args.size() == 3) {
 					this->LogMessage("Disabling indicated air speed prefix", "Config");
+					this->prefixIAS = "";
 				}
 				else {
-					this->LogMessage("Enabling indicated air speed prefix", "Config");
-				}
+					if (args[3].size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+						std::ostringstream msg;
+						msg << "Indicated air speed prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less";
+						this->LogMessage(msg.str(), "Config");
+						return true;
+					}
 
-				this->prefixIAS = !this->prefixIAS;
+					this->LogMessage("Configured indicated air speed prefix", "Config");
+					this->prefixIAS = args[3];
+				}
 
 				this->SaveSettings();
 				return true;
 			}
 			else if (args[2] == "mach") {
-				if (this->prefixMach) {
-					this->LogMessage("Disabling mach prefix", "Config");
+				if (args.size() == 3) {
+					this->LogMessage("Disabling mach number prefix", "Config");
+					this->prefixMach = "";
 				}
 				else {
-					this->LogMessage("Enabling mach prefix", "Config");
-				}
+					if (args[3].size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+						std::ostringstream msg;
+						msg << "Mach number prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less";
+						this->LogMessage(msg.str(), "Config");
+						return true;
+					}
 
-				this->prefixMach = !this->prefixMach;
+					this->LogMessage("Configured mach number prefix", "Config");
+					this->prefixMach = args[3];
+				}
 
 				this->SaveSettings();
 				return true;
@@ -210,7 +224,9 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 				}
 
 				if (digits < MIN_MACH_DIGITS || digits > MAX_MACH_DIGITS) {
-					this->LogMessage("Invalid digit count for mach numbers. Must be between 1 and 13", "Config");
+					std::ostringstream msg;
+					msg << "Invalid digit count for mach numbers. Must be between " << MIN_MACH_DIGITS << " and " << MAX_MACH_DIGITS;
+					this->LogMessage(msg.str(), "Config");
 					return true;
 				}
 
@@ -478,8 +494,8 @@ void IASsure::IASsure::ShowCalculatedIAS(const EuroScopePlugIn::CRadarTarget& rt
 	}
 
 	std::ostringstream tag;
-	if (this->prefixIAS && !abbreviated) {
-		tag << "I";
+	if (!this->prefixIAS.empty() && !abbreviated) {
+		tag << this->prefixIAS;
 	}
 	tag << std::setfill('0');
 
@@ -598,8 +614,8 @@ void IASsure::IASsure::ShowCalculatedMach(const EuroScopePlugIn::CRadarTarget& r
 	}
 
 	std::ostringstream tag;
-	if (this->prefixMach) {
-		tag << "M";
+	if (!this->prefixMach.empty()) {
+		tag << this->prefixMach;
 	}
 
 	auto it = this->reportedMach.find(rt.GetCallsign());
@@ -715,15 +731,31 @@ void IASsure::IASsure::LoadSettings()
 			this->weatherUpdateURL = splitSettings[2];
 		}
 		std::istringstream(splitSettings[3]) >> this->useReportedGS;
-		std::istringstream(splitSettings[4]) >> this->prefixIAS;
-		std::istringstream(splitSettings[5]) >> this->prefixMach;
 		int machDigits;
-		std::istringstream(splitSettings[6]) >> machDigits;
+		std::istringstream(splitSettings[4]) >> machDigits;
 		if (machDigits < MIN_MACH_DIGITS || machDigits > MAX_MACH_DIGITS) {
-			this->LogMessage("Invalid digit count for mach numbers. Must be between 1 and 13, falling back to default (2)", "Config");
+			std::ostringstream msg;
+			msg << "Invalid digit count for mach numbers. Must be between " << MIN_MACH_DIGITS << " and " << MAX_MACH_DIGITS << ", falling back to default (2)";
+			this->LogMessage(msg.str(), "Config");
 		}
 		else {
 			this->machDigits = machDigits;
+		}
+		if (splitSettings[5].size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+			std::ostringstream msg;
+			msg << "Indicated air speed prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (I)";
+			this->LogMessage(msg.str(), "Config");
+		}
+		else {
+			this->prefixIAS = splitSettings[5];
+		}
+		if (splitSettings[6].size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+			std::ostringstream msg;
+			msg << "Mach number prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (I)";
+			this->LogMessage(msg.str(), "Config");
+		}
+		else {
+			this->prefixIAS = splitSettings[6];
 		}
 		int machThresholdFL;
 		std::istringstream(splitSettings[7]) >> machThresholdFL;
@@ -748,9 +780,9 @@ void IASsure::IASsure::SaveSettings()
 		<< this->weatherUpdateInterval.count() << SETTINGS_DELIMITER
 		<< this->weatherUpdateURL << SETTINGS_DELIMITER
 		<< this->useReportedGS << SETTINGS_DELIMITER
+		<< this->machDigits << SETTINGS_DELIMITER
 		<< this->prefixIAS << SETTINGS_DELIMITER
 		<< this->prefixMach << SETTINGS_DELIMITER
-		<< this->machDigits << SETTINGS_DELIMITER
 		<< this->machThresholdFL;
 
 	this->SaveDataToSettings(PLUGIN_NAME, "Settings", ss.str().c_str());
@@ -778,15 +810,6 @@ void IASsure::IASsure::TryLoadConfigFile()
 	}
 
 	try {
-		auto& prefixCfg = cfg.at("prefix");
-		this->prefixIAS = prefixCfg.value<bool>("ias", this->prefixIAS);
-		this->prefixMach = prefixCfg.value<bool>("mach", this->prefixMach);
-	}
-	catch (std::exception) {
-		this->LogDebugMessage("Failed to parse prefix section of config file, might not exist. Ignoring", "Config");
-	}
-
-	try {
 		auto& machCfg = cfg.at("mach");
 		int machDigits = machCfg.value<int>("digits", this->machDigits);
 		if (machDigits < MIN_MACH_DIGITS || machDigits > MAX_MACH_DIGITS) {
@@ -805,6 +828,31 @@ void IASsure::IASsure::TryLoadConfigFile()
 	}
 	catch (std::exception) {
 		this->LogDebugMessage("Failed to parse mach section of config file, might not exist. Ignoring", "Config");
+	}
+
+	try {
+		auto& prefixCfg = cfg.at("prefix");
+		std::string prefixIAS = prefixCfg.value<std::string>("ias", this->prefixIAS);
+		if (prefixIAS.size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+			std::ostringstream msg;
+			msg << "Indicated air speed prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (" << this->prefixIAS << ")";
+			this->LogMessage(msg.str(), "Config");
+		}
+		else {
+			this->prefixIAS = prefixIAS;
+		}
+		std::string prefixMach = prefixCfg.value<std::string>("mach", this->prefixIAS);
+		if (prefixMach.size() > (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+			std::ostringstream msg;
+			msg << "Mach number prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (" << this->prefixMach << ")";
+			this->LogMessage(msg.str(), "Config");
+		}
+		else {
+			this->prefixMach = prefixMach;
+		}
+	}
+	catch (std::exception) {
+		this->LogDebugMessage("Failed to parse prefix section of config file, might not exist. Ignoring", "Config");
 	}
 
 	try {

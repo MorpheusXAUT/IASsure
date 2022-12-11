@@ -36,6 +36,7 @@ const int MIN_REPORTED_MACH = 01;
 const int MAX_REPORTED_MACH = 99;
 const int INTERVAL_REPORTED_MACH = 1;
 const int MIN_MACH_DIGITS = 1;
-const int MAX_MACH_DIGITS = 13;
+const int MAX_MACH_DIGITS = 5;
+const int TAG_ITEM_MAX_CONTENT_LENGTH = 14;
 
 constexpr auto CONFIG_FILE_NAME = "config.json";
