@@ -37,12 +37,17 @@ namespace IASsure {
 		std::chrono::minutes weatherUpdateInterval;
 		std::string weatherUpdateURL;
 		bool useReportedGS;
+		bool prefixIAS;
+		bool prefixMach;
+		int machDigits;
+		int machThresholdFL;
 
 		std::unordered_map<std::string, int> reportedIAS;
 		std::unordered_set<std::string> calculatedIASToggled;
 		std::unordered_set<std::string> calculatedIASAbbreviatedToggled;
 		std::unordered_map<std::string, double> reportedMach;
 		std::unordered_set<std::string> calculatedMachToggled;
+		std::unordered_set<std::string> calculatedMachAboveThresholdToggled;
 
 		::IASsure::Weather weather;
 		::IASsure::thread::PeriodicAction *weatherUpdater;
@@ -54,13 +59,13 @@ namespace IASsure {
 		void ClearReportedIAS(const EuroScopePlugIn::CFlightPlan& fp);
 		void ToggleCalculatedIAS(const EuroScopePlugIn::CFlightPlan& fp, bool abbreviated = false);
 		double CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt);
-		void SetCalculatedIAS(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool abbreviated = false);
+		void ShowCalculatedIAS(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool abbreviated = false, bool onlyToggled = false);
 
 		void SetReportedMach(const EuroScopePlugIn::CFlightPlan& fp, std::string selected);
 		void ClearReportedMach(const EuroScopePlugIn::CFlightPlan& fp);
-		void ToggleCalculatedMach(const EuroScopePlugIn::CFlightPlan& fp);
+		void ToggleCalculatedMach(const EuroScopePlugIn::CFlightPlan& fp, bool aboveThreshold = false);
 		double CalculateMach(const EuroScopePlugIn::CRadarTarget& rt);
-		void SetCalculatedMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB);
+		void ShowCalculatedMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool aboveThreshold = false, bool onlyToggled = false);
 
 		void CheckLoginState();
 		void UpdateWeather();

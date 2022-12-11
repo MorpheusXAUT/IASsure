@@ -12,7 +12,11 @@ IASsure::IASsure::IASsure() :
 	weatherUpdateInterval(5),
 	loginState(0),
 	weatherUpdater(nullptr),
-	useReportedGS(true)
+	useReportedGS(true),
+	prefixIAS(true),
+	prefixMach(true),
+	machDigits(2),
+	machThresholdFL(24500)
 {
 	std::ostringstream msg;
 	msg << "Version " << PLUGIN_VERSION << " loaded.";
@@ -37,7 +41,7 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 	if (args[0] == ".ias") {
 		if (args.size() == 1) {
 			std::ostringstream msg;
-			msg << "Version " << PLUGIN_VERSION << " loaded. Available commands: debug, reset, weather, gs";
+			msg << "Version " << PLUGIN_VERSION << " loaded. Available commands: debug, reset, weather, gs, prefix, mach";
 
 			this->LogMessage(msg.str());
 			return true;
@@ -64,6 +68,8 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 			this->calculatedIASToggled.clear();
 			this->calculatedIASAbbreviatedToggled.clear();
 			this->calculatedMachToggled.clear();
+			this->calculatedMachAboveThresholdToggled.clear();
+
 			return true;
 		}
 		else if (args[1] == "weather") {
@@ -149,6 +155,104 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 			this->SaveSettings();
 			return true;
 		}
+		else if (args[1] == "prefix") {
+			if (args.size() == 2) {
+				this->LogMessage("Use .ias prefix ias to toggle the indicated air speed prefix. Use .ias prefix mach to toggle the mach number prefix.", "Config");
+				return true;
+			}
+
+			if (args[2] == "ias") {
+				if (this->prefixIAS) {
+					this->LogMessage("Disabling indicated air speed prefix", "Config");
+				}
+				else {
+					this->LogMessage("Enabling indicated air speed prefix", "Config");
+				}
+
+				this->prefixIAS = !this->prefixIAS;
+
+				this->SaveSettings();
+				return true;
+			}
+			else if (args[2] == "mach") {
+				if (this->prefixMach) {
+					this->LogMessage("Disabling mach prefix", "Config");
+				}
+				else {
+					this->LogMessage("Enabling mach prefix", "Config");
+				}
+
+				this->prefixMach = !this->prefixMach;
+
+				this->SaveSettings();
+				return true;
+			}
+		}
+		else if (args[1] == "mach") {
+			if (args.size() == 2) {
+				this->LogMessage("Use .ias mach digits <DIGITS> to set the desired digits displayed for mach numbers (range 1-13). Use .ias mach threshold <FLIGHTLEVEL> to set a flight level threshold below which no mach number will be calculated.", "Config");
+				return true;
+			}
+
+			if (args[2] == "digits") {
+				if (args.size() == 3) {
+					this->LogMessage("Digit count for mach numbers is missing. Usage: .ias mach digits <DIGITS>");
+					return true;
+				}
+
+				int digits;
+				try {
+					digits = std::stoi(args[3]);
+				}
+				catch (std::exception) {
+					this->LogMessage("Invalid digit count for mach numbers. Usage: .ias mach digits <DIGITS>", "Config");
+					return true;
+				}
+
+				if (digits < MIN_MACH_DIGITS || digits > MAX_MACH_DIGITS) {
+					this->LogMessage("Invalid digit count for mach numbers. Must be between 1 and 13", "Config");
+					return true;
+				}
+
+				this->machDigits = digits;
+
+				std::ostringstream msg;
+				msg << "Displaying mach numbers with " << this->machDigits << " digits precision";
+				this->LogMessage(msg.str(), "Config");
+
+				this->SaveSettings();
+				return true;
+			}
+			else if (args[2] == "threshold") {
+				if (args.size() == 3) {
+					this->LogMessage("Flight level threshold for mach calculations is missing. Usage: .ias mach threshold <FLIGHTLEVEL>");
+					return true;
+				}
+
+				int threshold;
+				try {
+					threshold = std::stoi(args[3]);
+				}
+				catch (std::exception) {
+					this->LogMessage("Invalid flight level threshold for mach calculations. Usage: .ias mach threshold <FLIGHTLEVEL>", "Config");
+					return true;
+				}
+
+				if (threshold < 0) {
+					this->LogMessage("Invalid flight level threshold for mach calculations. Must be greater than 0", "Config");
+					return true;
+				}
+
+				this->machThresholdFL = threshold * 100;
+
+				std::ostringstream msg;
+				msg << "Displaying mach numbers for aircraft flying higher than FL" << this->machThresholdFL << " in threshold tag item";
+				this->LogMessage(msg.str(), "Config");
+
+				this->SaveSettings();
+				return true;
+			}
+		}
 	}
 
 	return false;
@@ -162,28 +266,28 @@ void IASsure::IASsure::OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan, Eur
 
 	switch (ItemCode) {
 	case TAG_ITEM_CALCULATED_IAS:
-		this->SetCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB);
+		this->ShowCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB);
 		break;
 	case TAG_ITEM_CALCULATED_IAS_ABBREVIATED:
-		this->SetCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB, true);
+		this->ShowCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB, true);
 		break;
 	case TAG_ITEM_CALCULATED_IAS_TOGGLABLE:
-		if (this->calculatedIASToggled.contains(FlightPlan.GetCallsign())) {
-			this->SetCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB);
-		}
+		this->ShowCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB, false, true);
 		break;
 	case TAG_ITEM_CALCULATED_IAS_ABBREVIATED_TOGGLABLE:
-		if (this->calculatedIASAbbreviatedToggled.contains(FlightPlan.GetCallsign())) {
-			this->SetCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB, true);
-		}
+		this->ShowCalculatedIAS(RadarTarget, sItemString, pColorCode, pRGB, true, true);
 		break;
 	case TAG_ITEM_CALCULATED_MACH:
-		this->SetCalculatedMach(RadarTarget, sItemString, pColorCode, pRGB);
+		this->ShowCalculatedMach(RadarTarget, sItemString, pColorCode, pRGB);
+		break;
+	case TAG_ITEM_CALCULATED_MACH_ABOVE_THRESHOLD:
+		this->ShowCalculatedMach(RadarTarget, sItemString, pColorCode, pRGB, true);
 		break;
 	case TAG_ITEM_CALCULATED_MACH_TOGGLABLE:
-		if (this->calculatedMachToggled.contains(FlightPlan.GetCallsign())) {
-			this->SetCalculatedMach(RadarTarget, sItemString, pColorCode, pRGB);
-		}
+		this->ShowCalculatedMach(RadarTarget, sItemString, pColorCode, pRGB, false, true);
+		break;
+	case TAG_ITEM_CALCULATED_MACH_ABOVE_THRESHOLD_TOGGLABLE:
+		this->ShowCalculatedMach(RadarTarget, sItemString, pColorCode, pRGB, true, true);
 		break;
 	}
 }
@@ -256,6 +360,9 @@ void IASsure::IASsure::OnFunctionCall(int FunctionId, const char* sItemString, P
 	case TAG_FUNC_TOGGLE_CALCULATED_MACH:
 		this->ToggleCalculatedMach(fp);
 		break;
+	case TAG_FUNC_TOGGLE_CALCULATED_MACH_ABOVE_THRESHOLD:
+		this->ToggleCalculatedMach(fp, true);
+		break;
 	case TAG_FUNC_SET_REPORTED_MACH:
 		this->SetReportedMach(fp, sItemString);
 		break;
@@ -276,7 +383,8 @@ void IASsure::IASsure::RegisterTagItems()
 	this->RegisterTagItemType("Calculated IAS (abbreviated)", TAG_ITEM_CALCULATED_IAS_ABBREVIATED);
 	this->RegisterTagItemType("Calculated IAS (abbreviated, togglable)", TAG_ITEM_CALCULATED_IAS_ABBREVIATED_TOGGLABLE);
 	this->RegisterTagItemType("Calculated Mach", TAG_ITEM_CALCULATED_MACH);
-	this->RegisterTagItemType("Calculated Mach (togglable)", TAG_ITEM_CALCULATED_MACH_TOGGLABLE);
+	this->RegisterTagItemType("Calculated Mach (above threshold)", TAG_ITEM_CALCULATED_MACH_ABOVE_THRESHOLD);
+	this->RegisterTagItemType("Calculated Mach (above threshold, togglable)", TAG_ITEM_CALCULATED_MACH_ABOVE_THRESHOLD_TOGGLABLE);
 
 	this->RegisterTagItemFunction("Open reported IAS menu", TAG_FUNC_OPEN_REPORTED_IAS_MENU);
 	this->RegisterTagItemFunction("Clear reported IAS", TAG_FUNC_CLEAR_REPORTED_IAS);
@@ -285,6 +393,7 @@ void IASsure::IASsure::RegisterTagItems()
 	this->RegisterTagItemFunction("Open reported Mach menu", TAG_FUNC_OPEN_REPORTED_MACH_MENU);
 	this->RegisterTagItemFunction("Clear reported Mach", TAG_FUNC_CLEAR_REPORTED_MACH);
 	this->RegisterTagItemFunction("Toggle calculated Mach", TAG_FUNC_TOGGLE_CALCULATED_MACH);
+	this->RegisterTagItemFunction("Toggle calculated Mach (above threshold)", TAG_FUNC_TOGGLE_CALCULATED_MACH_ABOVE_THRESHOLD);
 }
 
 void IASsure::IASsure::SetReportedIAS(const EuroScopePlugIn::CFlightPlan& fp, std::string selected)
@@ -351,9 +460,14 @@ double IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt)
 	}
 }
 
-void IASsure::IASsure::SetCalculatedIAS(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool abbreviated)
+void IASsure::IASsure::ShowCalculatedIAS(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool abbreviated, bool onlyToggled)
 {
 	if (!rt.IsValid()) {
+		return;
+	}
+
+	if (onlyToggled && ((abbreviated && !this->calculatedIASAbbreviatedToggled.contains(rt.GetCallsign())) ||
+		(!abbreviated && !this->calculatedIASToggled.contains(rt.GetCallsign())))) {
 		return;
 	}
 
@@ -364,7 +478,7 @@ void IASsure::IASsure::SetCalculatedIAS(const EuroScopePlugIn::CRadarTarget& rt,
 	}
 
 	std::ostringstream tag;
-	if (!abbreviated) {
+	if (this->prefixIAS && !abbreviated) {
 		tag << "I";
 	}
 	tag << std::setfill('0');
@@ -420,14 +534,24 @@ void IASsure::IASsure::ClearReportedMach(const EuroScopePlugIn::CFlightPlan& fp)
 	this->reportedMach.erase(fp.GetCallsign());
 }
 
-void IASsure::IASsure::ToggleCalculatedMach(const EuroScopePlugIn::CFlightPlan& fp)
+void IASsure::IASsure::ToggleCalculatedMach(const EuroScopePlugIn::CFlightPlan& fp, bool aboveThreshold)
 {
 	std::string cs = fp.GetCallsign();
-	if (this->calculatedMachToggled.contains(cs)) {
-		this->calculatedMachToggled.erase(cs);
+	if (aboveThreshold) {
+		if (this->calculatedMachAboveThresholdToggled.contains(cs)) {
+			this->calculatedMachAboveThresholdToggled.erase(cs);
+		}
+		else {
+			this->calculatedMachAboveThresholdToggled.insert(cs);
+		}
 	}
 	else {
-		this->calculatedMachToggled.insert(cs);
+		if (this->calculatedMachToggled.contains(cs)) {
+			this->calculatedMachToggled.erase(cs);
+		}
+		else {
+			this->calculatedMachToggled.insert(cs);
+		}
 	}
 }
 
@@ -452,9 +576,18 @@ double IASsure::IASsure::CalculateMach(const EuroScopePlugIn::CRadarTarget& rt)
 	}
 }
 
-void IASsure::IASsure::SetCalculatedMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB)
+void IASsure::IASsure::ShowCalculatedMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool aboveThreshold, bool onlyToggled)
 {
 	if (!rt.IsValid()) {
+		return;
+	}
+
+	if (onlyToggled && ((aboveThreshold && !this->calculatedMachAboveThresholdToggled.contains(rt.GetCallsign())) || 
+		(!aboveThreshold && !this->calculatedMachToggled.contains(rt.GetCallsign())))) {
+		return;
+	}
+
+	if (aboveThreshold && rt.GetPosition().GetFlightLevel() < this->machThresholdFL) {
 		return;
 	}
 
@@ -465,11 +598,13 @@ void IASsure::IASsure::SetCalculatedMach(const EuroScopePlugIn::CRadarTarget& rt
 	}
 
 	std::ostringstream tag;
-	tag << "M";
+	if (this->prefixMach) {
+		tag << "M";
+	}
 
 	auto it = this->reportedMach.find(rt.GetCallsign());
 	if (it == this->reportedMach.end()) {
-		tag << std::setfill('0') << std::setw(2) << std::round(mach * 100);
+		tag << std::setfill('0') << std::setw(this->machDigits) << std::round(mach * std::pow(10, this->machDigits));
 	}
 	else {
 		double diff = it->second - mach;
@@ -480,7 +615,7 @@ void IASsure::IASsure::SetCalculatedMach(const EuroScopePlugIn::CRadarTarget& rt
 			tag << "-";
 		}
 
-		tag << std::setfill('0') << std::setw(2) << std::round(std::abs(diff * 100));
+		tag << std::setfill('0') << std::setw(this->machDigits) << std::round(std::abs(diff * std::pow(10, this->machDigits)));
 	}
 
 	strcpy_s(tagItemContent, 16, tag.str().c_str());
@@ -565,7 +700,7 @@ void IASsure::IASsure::LoadSettings()
 	if (settings) {
 		std::vector<std::string> splitSettings = ::IASsure::split(settings, SETTINGS_DELIMITER);
 
-		if (splitSettings.size() < 4) {
+		if (splitSettings.size() < 8) {
 			this->LogMessage("Invalid saved settings found, reverting to default.");
 
 			this->SaveSettings();
@@ -580,6 +715,24 @@ void IASsure::IASsure::LoadSettings()
 			this->weatherUpdateURL = splitSettings[2];
 		}
 		std::istringstream(splitSettings[3]) >> this->useReportedGS;
+		std::istringstream(splitSettings[4]) >> this->prefixIAS;
+		std::istringstream(splitSettings[5]) >> this->prefixMach;
+		int machDigits;
+		std::istringstream(splitSettings[6]) >> machDigits;
+		if (machDigits < MIN_MACH_DIGITS || machDigits > MAX_MACH_DIGITS) {
+			this->LogMessage("Invalid digit count for mach numbers. Must be between 1 and 13, falling back to default (2)", "Config");
+		}
+		else {
+			this->machDigits = machDigits;
+		}
+		int machThresholdFL;
+		std::istringstream(splitSettings[7]) >> machThresholdFL;
+		if (machThresholdFL < 0) {
+			this->LogMessage("Invalid mach threshold flight level. Must be greater than 0, falling back to default (245)", "Config");
+		}
+		else {
+			this->machThresholdFL = machThresholdFL;
+		}
 
 		this->LogDebugMessage("Successfully loaded settings.", "Config");
 	}
@@ -594,7 +747,11 @@ void IASsure::IASsure::SaveSettings()
 	ss << this->debug << SETTINGS_DELIMITER
 		<< this->weatherUpdateInterval.count() << SETTINGS_DELIMITER
 		<< this->weatherUpdateURL << SETTINGS_DELIMITER
-		<< this->useReportedGS;
+		<< this->useReportedGS << SETTINGS_DELIMITER
+		<< this->prefixIAS << SETTINGS_DELIMITER
+		<< this->prefixMach << SETTINGS_DELIMITER
+		<< this->machDigits << SETTINGS_DELIMITER
+		<< this->machThresholdFL;
 
 	this->SaveDataToSettings(PLUGIN_NAME, "Settings", ss.str().c_str());
 }
@@ -618,6 +775,36 @@ void IASsure::IASsure::TryLoadConfigFile()
 	}
 	catch (std::exception) {
 		this->LogMessage("Failed to read config file", "Config");
+	}
+
+	try {
+		auto& prefixCfg = cfg.at("prefix");
+		this->prefixIAS = prefixCfg.value<bool>("ias", this->prefixIAS);
+		this->prefixMach = prefixCfg.value<bool>("mach", this->prefixMach);
+	}
+	catch (std::exception) {
+		this->LogDebugMessage("Failed to parse prefix section of config file, might not exist. Ignoring", "Config");
+	}
+
+	try {
+		auto& machCfg = cfg.at("mach");
+		int machDigits = machCfg.value<int>("digits", this->machDigits);
+		if (machDigits < MIN_MACH_DIGITS || machDigits > MAX_MACH_DIGITS) {
+			this->LogMessage("Invalid digit count for mach numbers. Must be between 1 and 13, falling back to default (2)", "Config");
+		}
+		else {
+			this->machDigits = machDigits;
+		}
+		int machThresholdFL = machCfg.value<int>("thresholdFL", this->machThresholdFL);
+		if (machThresholdFL < 0) {
+			this->LogMessage("Invalid mach threshold flight level. Must be greater than 0, falling back to default (245)", "Config");
+		}
+		else {
+			this->machThresholdFL = machThresholdFL * 100;
+		}
+	}
+	catch (std::exception) {
+		this->LogDebugMessage("Failed to parse mach section of config file, might not exist. Ignoring", "Config");
 	}
 
 	try {
