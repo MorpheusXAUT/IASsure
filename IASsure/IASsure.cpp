@@ -70,6 +70,9 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 			this->calculatedMachToggled.clear();
 			this->calculatedMachAboveThresholdToggled.clear();
 
+			this->weather.clear();
+			this->ResetWeatherUpdater();
+
 			return true;
 		}
 		else if (args[1] == "weather") {
