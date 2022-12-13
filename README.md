@@ -300,7 +300,7 @@ The configuration file is expected to consist of a top level object with one or 
 
 As all barometric formulas used for IAS/Mach calculations require wind and temperature data, the best and most accurate results are achieved when using a (real-life) weather data source. All calculations can be performed without weather data as well (the plugin will fall back to this mode if no data can be retrieved), however the calculated results (especially the Mach number) will be inaccurate.
 
-Note that no weather data is retrieved while the client is disconnected or playing a recorded playback file.
+Note that weather data is only retrieved while the client is connected to VATSIM directly or via proxy - playback and sweatbox connections will not fetch weather information at all.
 
 Since neither EuroScope nor VATSIM provide spot winds/enroute wind data, a data source for weather information is required in order to utilise wind-corrected data. The current weather implementation is based on [Windy](https://www.windy.com/)'s data (or anything related provided in identical format) and defines several strategic reference points within a FIR. These points should cover all relevant parts/major traffic routes of your FIR in order to provide best weather data coverage without over-complicating weather data retrieval.
 

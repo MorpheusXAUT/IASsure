@@ -67,6 +67,7 @@ namespace IASsure {
 		double CalculateMach(const EuroScopePlugIn::CRadarTarget& rt);
 		void ShowCalculatedMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool aboveThreshold = false, bool onlyToggled = false);
 
+		void UpdateLoginState();
 		void CheckLoginState();
 		void UpdateWeather();
 		void StartWeatherUpdater();

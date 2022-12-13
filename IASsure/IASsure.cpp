@@ -391,7 +391,7 @@ void IASsure::IASsure::OnFunctionCall(int FunctionId, const char* sItemString, P
 void IASsure::IASsure::OnTimer(int Counter)
 {
 	if (Counter % 2) {
-		this->CheckLoginState();
+		this->UpdateLoginState();
 	}
 }
 
@@ -640,7 +640,7 @@ void IASsure::IASsure::ShowCalculatedMach(const EuroScopePlugIn::CRadarTarget& r
 	strcpy_s(tagItemContent, 16, tag.str().c_str());
 }
 
-void IASsure::IASsure::CheckLoginState()
+void IASsure::IASsure::UpdateLoginState()
 {
 	// login state has not changed, nothing to do
 	if (this->loginState == this->GetConnectionType()) {
@@ -649,15 +649,20 @@ void IASsure::IASsure::CheckLoginState()
 
 	this->loginState = this->GetConnectionType();
 
+	this->CheckLoginState();
+}
+
+void IASsure::IASsure::CheckLoginState()
+{
 	switch (this->loginState) {
-	case EuroScopePlugIn::CONNECTION_TYPE_NO:
-	case EuroScopePlugIn::CONNECTION_TYPE_PLAYBACK:
-		// user just disconnected, stop weather updater if it's running
-		this->StopWeatherUpdater();
+	case EuroScopePlugIn::CONNECTION_TYPE_DIRECT:
+	case EuroScopePlugIn::CONNECTION_TYPE_VIA_PROXY:
+		// user is connected, start weather update if it's not running yet
+		this->StartWeatherUpdater();
 		break;
 	default:
-		// user just connected, start weather update if it's not running yet
-		this->StartWeatherUpdater();
+		// user is disconnected or is using incompatible connection (e.g. sweatbox), stop weather updater if it's running
+		this->StopWeatherUpdater();
 	}
 }
 
@@ -712,7 +717,7 @@ void IASsure::IASsure::StopWeatherUpdater()
 void IASsure::IASsure::ResetWeatherUpdater()
 {
 	this->StopWeatherUpdater();
-	this->StartWeatherUpdater();
+	this->CheckLoginState();
 }
 
 void IASsure::IASsure::LoadSettings()
