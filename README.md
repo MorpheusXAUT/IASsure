@@ -8,6 +8,7 @@ This plugin allows you to make better informed decisions based on aircraft speed
 
 - [Getting started](#getting-started)
   - [Prerequisites](#prerequisites)
+  - [Verifying releases](#verifying-releases)
   - [Installation](#installation)
 - [Usage](#usage)
   - [Basics](#basics)
@@ -27,17 +28,38 @@ This plugin allows you to make better informed decisions based on aircraft speed
 
 Since `IASsure` was developed as an EuroScope plugin, it requires a working installation [EuroScope](https://euroscope.hu/). The initial development was started using EuroScope version [`v3.2.1.34`](https://www.euroscope.hu/wp/2022/05/08/v3-2-1-34/), although the plugin should most likely also work fine with previous and later versions. As development continues, compatibility to the latest **beta** versions of EuroScope will be maintained as long as possible and feasible.
 
+### Verifying releases
+
+Each release includes a `checksums.txt` file, containing the `sha256` checksums of the downloadable artifacts. In order to verify the checksum's integrity, a detached `gpg` signature (`checksums.txt.sig`) is available for all official releases as well.  
+All signatures are made using GPG key [`54930D654C505BA73BC06A0E4C685956F39779B2`](54930D654C505BA73BC06A0E4C685956F39779B2.asc).
+
+In order to verify a release, perform the following steps:
+- Import the signing key into your local keyring (only required once):
+```bash
+gpg --import 54930D654C505BA73BC06A0E4C685956F39779B2.asc
+```
+- Download the appropriate archive, `checksums.txt` and `checksums.txt.sig` from the [Releases](https://github.com/MorpheusXAUT/IASsure/releases) page
+- Verify the integrity of the checksums file:
+```bash
+gpg --verify checksums.txt.sig checksums.txt
+```
+- Verify the checksum of the downloaded archive:
+```bash
+sha256sum --ignore-missing -c checksums.txt
+```
+
 ### Installation
 
 1. Download the latest release (`IASsure_vX.Y.Z.zip`) of `IASsure` from the [**Releases**](https://github.com/MorpheusXAUT/IASsure/releases/latest) section of this repository.
-2. Extract the zip file to a location of your choosing (most likely somewhere inside your EuroScope sector file/profile setup, along with other plugins that are already set up). As a [config file](#config) is supported (and expected to reside within the same folder as the plugin's `.dll`), it's advised to create a new `IASsure` folder.
-3. Start EuroScope and open the **Plug-ins ...** dialog in the settings menu (**OTHER SET**).
+2. (Optional) [Verify downloaded release](#verifying-releases).
+3. Extract the zip file to a location of your choosing (most likely somewhere inside your EuroScope sector file/profile setup, along with other plugins that are already set up). As a [config file](#config) is supported (and expected to reside within the same folder as the plugin's `.dll`), it's advised to create a new `IASsure` folder.
+4. Start EuroScope and open the **Plug-ins ...** dialog in the settings menu (**OTHER SET**).
 ![Plug-ins dialog](https://i.imgur.com/SrVtRp9.png)
-4. **Load** the plugins by navigating to the folder you extracted `IASsure` to and selecting the exacted `IASsure.dll`. Ensure the expected version is displayed.
+5. **Load** the plugins by navigating to the folder you extracted `IASsure` to and selecting the exacted `IASsure.dll`. Ensure the expected version is displayed.
 ![Load plugin](https://i.imgur.com/D1eawjA.png)
-5. Close the plugin dialog by clicking **Close**.
-6. Configure your tags via the **TAG editor ...** dialog in the settings menu (**OTHER SET**). See [tag items](#tag-items) and [tag functions](#tag-functions) below for a list of available options.
-7. Close the tag editor dialog by clicking **OK**.
+6. Close the plugin dialog by clicking **Close**.
+7. Configure your tags via the **TAG editor ...** dialog in the settings menu (**OTHER SET**). See [tag items](#tag-items) and [tag functions](#tag-functions) below for a list of available options.
+8. Close the tag editor dialog by clicking **OK**.
 
 ## Usage
 
