@@ -3,7 +3,7 @@
 #include <Windows.h>
 
 constexpr auto PLUGIN_NAME = "IASsure";
-constexpr auto PLUGIN_VERSION = "1.4.0-rc.3";
+constexpr auto PLUGIN_VERSION = "1.4.0";
 constexpr auto PLUGIN_AUTHOR = "Nick Mueller";
 constexpr auto PLUGIN_LICENSE = "(c) 2022, MIT License";
 
