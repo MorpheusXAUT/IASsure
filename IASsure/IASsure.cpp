@@ -851,7 +851,7 @@ void IASsure::IASsure::TryLoadConfigFile()
 		else {
 			this->prefixIAS = prefixIAS;
 		}
-		std::string prefixMach = prefixCfg.value<std::string>("mach", this->prefixIAS);
+		std::string prefixMach = prefixCfg.value<std::string>("mach", this->prefixMach);
 		if (prefixMach.size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
 			std::ostringstream msg;
 			msg << "Mach number prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (" << this->prefixMach << ")";
