@@ -402,6 +402,7 @@ void IASsure::IASsure::RegisterTagItems()
 	this->RegisterTagItemType("Calculated IAS (abbreviated)", TAG_ITEM_CALCULATED_IAS_ABBREVIATED);
 	this->RegisterTagItemType("Calculated IAS (abbreviated, togglable)", TAG_ITEM_CALCULATED_IAS_ABBREVIATED_TOGGLABLE);
 	this->RegisterTagItemType("Calculated Mach", TAG_ITEM_CALCULATED_MACH);
+	this->RegisterTagItemType("Calculated Mach (togglable)", TAG_ITEM_CALCULATED_MACH_TOGGLABLE);
 	this->RegisterTagItemType("Calculated Mach (above threshold)", TAG_ITEM_CALCULATED_MACH_ABOVE_THRESHOLD);
 	this->RegisterTagItemType("Calculated Mach (above threshold, togglable)", TAG_ITEM_CALCULATED_MACH_ABOVE_THRESHOLD_TOGGLABLE);
 
