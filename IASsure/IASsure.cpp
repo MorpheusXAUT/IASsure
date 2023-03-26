@@ -13,6 +13,7 @@ IASsure::IASsure::IASsure() :
 	loginState(0),
 	weatherUpdater(nullptr),
 	useReportedGS(true),
+	useTrueNorthHeading(true),
 	prefixIAS("I"),
 	prefixMach("M"),
 	machDigits(2),
@@ -41,7 +42,7 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 	if (args[0] == ".ias") {
 		if (args.size() == 1) {
 			std::ostringstream msg;
-			msg << "Version " << PLUGIN_VERSION << " loaded. Available commands: debug, reset, weather, gs, prefix, mach";
+			msg << "Version " << PLUGIN_VERSION << " loaded. Available commands: debug, reset, weather, gs, hdg, prefix, mach";
 
 			this->LogMessage(msg.str());
 			return true;
@@ -154,6 +155,19 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 			}
 
 			this->useReportedGS = !this->useReportedGS;
+
+			this->SaveSettings();
+			return true;
+		}
+		else if (args[1] == "hdg") {
+			if (this->useTrueNorthHeading) {
+				this->LogMessage("Switched to using magnetic heading for CAS/Mach calculations", "Config");
+			}
+			else {
+				this->LogMessage("Switched to using true north heading for CAS/Mach calculations", "Config");
+			}
+
+			this->useTrueNorthHeading = !this->useTrueNorthHeading;
 
 			this->SaveSettings();
 			return true;
@@ -465,7 +479,7 @@ double IASsure::IASsure::CalculateIAS(const EuroScopePlugIn::CRadarTarget& rt)
 		return -1;
 	}
 
-	int hdg = rt.GetPosition().GetReportedHeading(); // heading in degrees
+	int hdg = this->useTrueNorthHeading ? rt.GetPosition().GetReportedHeadingTrueNorth() : rt.GetPosition().GetReportedHeading(); // heading in degrees
 	int gs = this->useReportedGS ? rt.GetPosition().GetReportedGS() : rt.GetGS(); // ground speed in knots
 	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
 
@@ -581,7 +595,7 @@ double IASsure::IASsure::CalculateMach(const EuroScopePlugIn::CRadarTarget& rt)
 		return -1;
 	}
 
-	int hdg = rt.GetPosition().GetReportedHeading(); // heading in degrees
+	int hdg = this->useTrueNorthHeading ? rt.GetPosition().GetReportedHeadingTrueNorth() : rt.GetPosition().GetReportedHeading(); // heading in degrees
 	int gs = this->useReportedGS ? rt.GetPosition().GetReportedGS() : rt.GetGS(); // ground speed in knots
 	int alt = rt.GetPosition().GetPressureAltitude(); // altitude in feet
 
@@ -777,6 +791,10 @@ void IASsure::IASsure::LoadSettings()
 			this->machThresholdFL = machThresholdFL;
 		}
 
+		if (splitSettings.size() >= 9) {
+			std::istringstream(splitSettings[8]) >> this->useTrueNorthHeading;
+		}
+
 		this->LogDebugMessage("Successfully loaded settings.", "Config");
 	}
 	else {
@@ -794,7 +812,8 @@ void IASsure::IASsure::SaveSettings()
 		<< this->machDigits << SETTINGS_DELIMITER
 		<< this->prefixIAS << SETTINGS_DELIMITER
 		<< this->prefixMach << SETTINGS_DELIMITER
-		<< this->machThresholdFL;
+		<< this->machThresholdFL << SETTINGS_DELIMITER
+		<< this->useTrueNorthHeading;
 
 	this->SaveDataToSettings(PLUGIN_NAME, "Settings", ss.str().c_str());
 }

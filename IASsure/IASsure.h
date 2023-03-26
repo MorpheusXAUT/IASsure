@@ -37,6 +37,7 @@ namespace IASsure {
 		std::chrono::minutes weatherUpdateInterval;
 		std::string weatherUpdateURL;
 		bool useReportedGS;
+		bool useTrueNorthHeading;
 		std::string prefixIAS;
 		std::string prefixMach;
 		int machDigits;
