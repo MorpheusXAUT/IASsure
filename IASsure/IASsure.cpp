@@ -17,7 +17,11 @@ IASsure::IASsure::IASsure() :
 	prefixIAS("I"),
 	prefixMach("M"),
 	machDigits(2),
-	machThresholdFL(24500)
+	machThresholdFL(24500),
+	unreliableIASIndicator("DIAS"),
+	unreliableIASColor(nullptr),
+	unreliableMachIndicator("DMACH"),
+	unreliableMachColor(nullptr)
 {
 	std::ostringstream msg;
 	msg << "Version " << PLUGIN_VERSION << " loaded.";
@@ -42,7 +46,7 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 	if (args[0] == ".ias") {
 		if (args.size() == 1) {
 			std::ostringstream msg;
-			msg << "Version " << PLUGIN_VERSION << " loaded. Available commands: debug, reset, weather, gs, hdg, prefix, mach";
+			msg << "Version " << PLUGIN_VERSION << " loaded. Available commands: debug, reset, reload, weather, gs, hdg, prefix, mach";
 
 			this->LogMessage(msg.str());
 			return true;
@@ -70,9 +74,17 @@ bool IASsure::IASsure::OnCompileCommand(const char* sCommandLine)
 			this->calculatedIASAbbreviatedToggled.clear();
 			this->calculatedMachToggled.clear();
 			this->calculatedMachAboveThresholdToggled.clear();
+			this->unreliableSpeedToggled.clear();
 
 			this->weather.clear();
 			this->ResetWeatherUpdater();
+
+			return true;
+		}
+		else if (args[1] == "reload") {
+			this->LogMessage("Reloading plugin config", "Config");
+
+			this->TryLoadConfigFile();
 
 			return true;
 		}
@@ -399,6 +411,9 @@ void IASsure::IASsure::OnFunctionCall(int FunctionId, const char* sItemString, P
 	case TAG_FUNC_SET_REPORTED_MACH:
 		this->SetReportedMach(fp, sItemString);
 		break;
+	case TAG_FUNC_TOGGLE_UNRELIABLE_SPEED:
+		this->ToggleUnreliableSpeed(fp);
+		break;
 	}
 }
 
@@ -428,6 +443,7 @@ void IASsure::IASsure::RegisterTagItems()
 	this->RegisterTagItemFunction("Clear reported Mach", TAG_FUNC_CLEAR_REPORTED_MACH);
 	this->RegisterTagItemFunction("Toggle calculated Mach", TAG_FUNC_TOGGLE_CALCULATED_MACH);
 	this->RegisterTagItemFunction("Toggle calculated Mach (above threshold)", TAG_FUNC_TOGGLE_CALCULATED_MACH_ABOVE_THRESHOLD);
+	this->RegisterTagItemFunction("Toggle unreliable speed", TAG_FUNC_TOGGLE_UNRELIABLE_SPEED);
 }
 
 void IASsure::IASsure::SetReportedIAS(const EuroScopePlugIn::CFlightPlan& fp, std::string selected)
@@ -502,6 +518,16 @@ void IASsure::IASsure::ShowCalculatedIAS(const EuroScopePlugIn::CRadarTarget& rt
 
 	if (onlyToggled && ((abbreviated && !this->calculatedIASAbbreviatedToggled.contains(rt.GetCallsign())) ||
 		(!abbreviated && !this->calculatedIASToggled.contains(rt.GetCallsign())))) {
+		return;
+	}
+
+	if (this->unreliableSpeedToggled.contains(rt.GetCallsign()) && this->unreliableIASIndicator.size() > 0) {
+		// aircraft has been flagged as having unreliable speed, indicator for unreliable IAS was configured, set and skip calculations
+		strcpy_s(tagItemContent, 16, this->unreliableIASIndicator.c_str());
+		if (this->unreliableIASColor != nullptr) {
+			*tagItemColorCode = EuroScopePlugIn::TAG_COLOR_RGB_DEFINED;
+			*tagItemRGB = *this->unreliableIASColor;
+		}
 		return;
 	}
 
@@ -625,6 +651,16 @@ void IASsure::IASsure::ShowCalculatedMach(const EuroScopePlugIn::CRadarTarget& r
 		return;
 	}
 
+	if (this->unreliableSpeedToggled.contains(rt.GetCallsign()) && this->unreliableMachIndicator.size() > 0) {
+		// aircraft has been flagged as having unreliable speed, indicator for unreliable Mach number was configured, set and skip calculations
+		strcpy_s(tagItemContent, 16, this->unreliableMachIndicator.c_str());
+		if (this->unreliableMachColor != nullptr) {
+			*tagItemColorCode = EuroScopePlugIn::TAG_COLOR_RGB_DEFINED;
+			*tagItemRGB = *this->unreliableMachColor;
+		}
+		return;
+	}
+
 	double mach = this->CalculateMach(rt);
 	if (mach < 0) {
 		// gs or alt outside of supported ranges. no value to display in tag
@@ -653,6 +689,17 @@ void IASsure::IASsure::ShowCalculatedMach(const EuroScopePlugIn::CRadarTarget& r
 	}
 
 	strcpy_s(tagItemContent, 16, tag.str().c_str());
+}
+
+void IASsure::IASsure::ToggleUnreliableSpeed(const EuroScopePlugIn::CFlightPlan& fp)
+{
+	std::string cs = fp.GetCallsign();
+	if (this->unreliableSpeedToggled.contains(cs)) {
+		this->unreliableSpeedToggled.erase(cs);
+	}
+	else {
+		this->unreliableSpeedToggled.insert(cs);
+	}
 }
 
 void IASsure::IASsure::UpdateLoginState()
@@ -741,7 +788,8 @@ void IASsure::IASsure::LoadSettings()
 	if (settings) {
 		std::vector<std::string> splitSettings = ::IASsure::split(settings, SETTINGS_DELIMITER);
 
-		if (splitSettings.size() < 8) {
+		size_t settingCount = splitSettings.size();
+		if (settingCount < 8) {
 			this->LogMessage("Invalid saved settings found, reverting to default.");
 
 			this->SaveSettings();
@@ -791,8 +839,30 @@ void IASsure::IASsure::LoadSettings()
 			this->machThresholdFL = machThresholdFL;
 		}
 
-		if (splitSettings.size() >= 9) {
+		if (settingCount >= 9) {
 			std::istringstream(splitSettings[8]) >> this->useTrueNorthHeading;
+		}
+
+		if (settingCount >= 10) {
+			if (splitSettings[9].size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH)) {
+				std::ostringstream msg;
+				msg << "Unreliable IAS indicator is too long, must be " << TAG_ITEM_MAX_CONTENT_LENGTH << " characters or less. Falling back to default (DIAS)";
+				this->LogMessage(msg.str(), "Config");
+			}
+			else {
+				std::istringstream(splitSettings[9]) >> this->unreliableIASIndicator;
+			}
+		}
+
+		if (settingCount >= 11) {
+			if (splitSettings[10].size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH)) {
+				std::ostringstream msg;
+				msg << "Unreliable Mach number indicator is too long, must be " << TAG_ITEM_MAX_CONTENT_LENGTH << " characters or less. Falling back to default (DMACH)";
+				this->LogMessage(msg.str(), "Config");
+			}
+			else {
+				std::istringstream(splitSettings[10]) >> this->unreliableIASIndicator;
+			}
 		}
 
 		this->LogDebugMessage("Successfully loaded settings.", "Config");
@@ -813,7 +883,9 @@ void IASsure::IASsure::SaveSettings()
 		<< this->prefixIAS << SETTINGS_DELIMITER
 		<< this->prefixMach << SETTINGS_DELIMITER
 		<< this->machThresholdFL << SETTINGS_DELIMITER
-		<< this->useTrueNorthHeading;
+		<< this->useTrueNorthHeading << SETTINGS_DELIMITER
+		<< this->unreliableIASIndicator << SETTINGS_DELIMITER
+		<< this->unreliableMachIndicator;
 
 	this->SaveDataToSettings(PLUGIN_NAME, "Settings", ss.str().c_str());
 }
@@ -837,10 +909,12 @@ void IASsure::IASsure::TryLoadConfigFile()
 	}
 	catch (std::exception) {
 		this->LogMessage("Failed to read config file", "Config");
+		return;
 	}
 
 	try {
 		auto& machCfg = cfg.at("mach");
+
 		int machDigits = machCfg.value<int>("digits", this->machDigits);
 		if (machDigits < MIN_MACH_DIGITS || machDigits > MAX_MACH_DIGITS) {
 			this->LogMessage("Invalid digit count for mach numbers. Must be between 1 and 13, falling back to default (2)", "Config");
@@ -855,13 +929,80 @@ void IASsure::IASsure::TryLoadConfigFile()
 		else {
 			this->machThresholdFL = machThresholdFL * 100;
 		}
+
+		std::string prefixMach = machCfg.value<std::string>("prefix", this->prefixMach);
+		if (prefixMach.size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+			std::ostringstream msg;
+			msg << "Mach number prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (" << this->prefixMach << ")";
+			this->LogMessage(msg.str(), "Config");
+		}
+		else {
+			this->prefixMach = prefixMach;
+		}
+
+		std::string unreliableMachIndicator = machCfg.value<std::string>("unreliableIndicator", this->unreliableMachIndicator);
+		if (unreliableMachIndicator.size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH)) {
+			std::ostringstream msg;
+			msg << "Unreliable Mach number indicator is too long, must be " << TAG_ITEM_MAX_CONTENT_LENGTH << " characters or less. Falling back to default (" << this->unreliableMachIndicator << ")";
+			this->LogMessage(msg.str(), "Config");
+		}
+		else {
+			this->unreliableMachIndicator = unreliableMachIndicator;
+		}
+
+		std::string unreliableMachColor = machCfg.value<std::string>("unreliableColor", "");
+		if (unreliableMachColor.size() > 0) {
+			this->unreliableMachColor = parseRGBString(unreliableMachColor);
+			if (this->unreliableMachColor == nullptr) {
+				this->LogMessage("Unreliable Mach number color is invalid, must be in comma-separated integer RGB format (e.g. \"123,123,123\"). Falling back to no color", "Config");
+			}
+		}
 	}
 	catch (std::exception) {
 		this->LogDebugMessage("Failed to parse mach section of config file, might not exist. Ignoring", "Config");
 	}
 
 	try {
+		auto& iasCfg = cfg.at("ias");
+
+		std::string prefixIAS = iasCfg.value<std::string>("prefix", this->prefixIAS);
+		if (prefixIAS.size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
+			std::ostringstream msg;
+			msg << "Indicated air speed prefix is too long, must be " << (TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits) << " characters or less. Falling back to default (" << this->prefixIAS << ")";
+			this->LogMessage(msg.str(), "Config");
+		}
+		else {
+			this->prefixIAS = prefixIAS;
+		}
+
+		std::string unreliableIASIndicator = iasCfg.value<std::string>("unreliableIndicator", this->unreliableIASIndicator);
+		if (unreliableIASIndicator.size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH)) {
+			std::ostringstream msg;
+			msg << "Unreliable IAS indicator is too long, must be " << TAG_ITEM_MAX_CONTENT_LENGTH << " characters or less. Falling back to default (" << this->unreliableIASIndicator << ")";
+			this->LogMessage(msg.str(), "Config");
+		}
+		else {
+			this->unreliableIASIndicator = unreliableIASIndicator;
+		}
+
+		std::string unreliableIASColor = iasCfg.value<std::string>("unreliableColor", "");
+		if (unreliableIASColor.size() > 0) {
+			this->unreliableIASColor = parseRGBString(unreliableIASColor);
+			if (this->unreliableIASColor == nullptr) {
+				this->LogMessage("Unreliable IAS color is invalid, must be in comma-separated (integer) RGB format (e.g. \"123,123,123\"). Falling back to no color", "Config");
+			}
+		}
+	}
+	catch (std::exception) {
+		this->LogDebugMessage("Failed to parse ias section of config file, might not exist. Ignoring", "Config");
+	}
+
+	try {
+		// deprecated prefix configuration in separate section
+		// TODO remove in next major release
 		auto& prefixCfg = cfg.at("prefix");
+		this->LogMessage("prefix config section is deprecated and will be removed in a future update. Use mach.prefix and ias.prefix to specify respective values.", "Config");
+
 		std::string prefixIAS = prefixCfg.value<std::string>("ias", this->prefixIAS);
 		if (prefixIAS.size() > (size_t)(TAG_ITEM_MAX_CONTENT_LENGTH - this->machDigits)) {
 			std::ostringstream msg;
@@ -887,6 +1028,7 @@ void IASsure::IASsure::TryLoadConfigFile()
 
 	try {
 		auto& weatherCfg = cfg.at("weather");
+
 		this->weatherUpdateURL = weatherCfg.value<std::string>("url", this->weatherUpdateURL);
 		this->weatherUpdateInterval = std::chrono::minutes(weatherCfg.value<int>("update", this->weatherUpdateInterval.count()));
 

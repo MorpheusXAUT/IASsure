@@ -65,4 +65,32 @@ namespace IASsure {
 
 		return std::string(buf).substr(0, pos);
 	}
+
+	inline COLORREF* parseRGBString(const std::string& s)
+	{
+		std::vector<std::string> rgbValues = split(s, ',');
+		if (rgbValues.size() != 3) {
+			return nullptr;
+		}
+
+		trim(rgbValues[0]);
+		trim(rgbValues[1]);
+		trim(rgbValues[2]);
+		
+		int r, g, b;
+		try {
+			r = std::stoi(rgbValues[0]);
+			g = std::stoi(rgbValues[1]);
+			b = std::stoi(rgbValues[2]);
+		}
+		catch (std::exception) {
+			return nullptr;
+		}
+
+		if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+			return nullptr;
+		}
+
+		return new COLORREF(RGB(r, g, b));
+	}
 }

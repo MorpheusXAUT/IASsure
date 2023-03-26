@@ -42,6 +42,10 @@ namespace IASsure {
 		std::string prefixMach;
 		int machDigits;
 		int machThresholdFL;
+		std::string unreliableIASIndicator;
+		COLORREF* unreliableIASColor;
+		std::string unreliableMachIndicator;
+		COLORREF* unreliableMachColor;
 
 		std::unordered_map<std::string, int> reportedIAS;
 		std::unordered_set<std::string> calculatedIASToggled;
@@ -49,6 +53,7 @@ namespace IASsure {
 		std::unordered_map<std::string, double> reportedMach;
 		std::unordered_set<std::string> calculatedMachToggled;
 		std::unordered_set<std::string> calculatedMachAboveThresholdToggled;
+		std::unordered_set<std::string> unreliableSpeedToggled;
 
 		::IASsure::Weather weather;
 		::IASsure::thread::PeriodicAction *weatherUpdater;
@@ -67,6 +72,8 @@ namespace IASsure {
 		void ToggleCalculatedMach(const EuroScopePlugIn::CFlightPlan& fp, bool aboveThreshold = false);
 		double CalculateMach(const EuroScopePlugIn::CRadarTarget& rt);
 		void ShowCalculatedMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool aboveThreshold = false, bool onlyToggled = false);
+
+		void ToggleUnreliableSpeed(const EuroScopePlugIn::CFlightPlan& fp);
 
 		void UpdateLoginState();
 		void CheckLoginState();

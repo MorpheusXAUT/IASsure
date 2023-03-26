@@ -94,5 +94,33 @@ namespace IASsureTest
 				long nearest = IASsure::roundToNearest(0.0, 0l);
 				});
 		}
+
+		void AssertParseRGBString(std::string s, COLORREF* expected)
+		{
+			COLORREF* color = IASsure::parseRGBString(s);
+			if (color == nullptr) {
+				Assert::IsNull(expected);
+			}
+			else if (expected == nullptr) {
+				Assert::IsNull(color);
+			}
+			else {
+				Assert::AreEqual(*expected, *color);
+			}
+		}
+
+		TEST_METHOD(TestParseRGBString)
+		{
+			COLORREF grey = RGB(123, 123, 123);
+			AssertParseRGBString("123,123,123", &grey);
+			AssertParseRGBString("123, 123, 123", &grey);
+			AssertParseRGBString("123,123,123,123", nullptr);
+			AssertParseRGBString("123,123", nullptr);
+			AssertParseRGBString("123,123,", nullptr);
+			AssertParseRGBString("123,123,asdf", nullptr);
+			AssertParseRGBString("512,512,512", nullptr);
+			AssertParseRGBString("-123,-123,-123", nullptr);
+			AssertParseRGBString("", nullptr);
+		}
 	};
 }
