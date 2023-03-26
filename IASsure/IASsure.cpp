@@ -21,7 +21,8 @@ IASsure::IASsure::IASsure() :
 	unreliableIASIndicator("DIAS"),
 	unreliableIASColor(nullptr),
 	unreliableMachIndicator("DMACH"),
-	unreliableMachColor(nullptr)
+	unreliableMachColor(nullptr),
+	broadcastUnreliableSpeed(true)
 {
 	std::ostringstream msg;
 	msg << "Version " << PLUGIN_VERSION << " loaded.";
@@ -417,6 +418,35 @@ void IASsure::IASsure::OnFunctionCall(int FunctionId, const char* sItemString, P
 	}
 }
 
+void IASsure::IASsure::OnFlightPlanControllerAssignedDataUpdate(EuroScopePlugIn::CFlightPlan FlightPlan, int DataType)
+{
+	if (!FlightPlan.IsValid()) {
+		return;
+	}
+
+	switch (DataType) {
+	case EuroScopePlugIn::CTR_DATA_TYPE_SCRATCH_PAD_STRING:
+	{
+		auto cad = FlightPlan.GetControllerAssignedData();
+		std::vector<std::string> scratch = split(cad.GetScratchPadString(), SCRATCH_PAD_DELIMITER);
+
+		if (scratch.size() >= 3 && scratch[0] == SCRATCH_PAD_BROADCAST_PREFIX) {
+			if (this->broadcastUnreliableSpeed && scratch[1] == SCRATCH_PAD_BROADCAST_UNRELIABLE_SPEED) {
+				if (scratch[2] == "1") {
+					this->unreliableSpeedToggled.insert(FlightPlan.GetCallsign());
+					this->LogDebugMessage("Enabling unreliable speed indication for aircraft after broadcast", FlightPlan.GetCallsign());
+				}
+				else {
+					this->unreliableSpeedToggled.erase(FlightPlan.GetCallsign());
+					this->LogDebugMessage("Disabling unreliable speed indication for aircraft after broadcast", FlightPlan.GetCallsign());
+				}
+			}
+		}
+		break;
+	}
+	}
+}
+
 void IASsure::IASsure::OnTimer(int Counter)
 {
 	if (Counter % 2) {
@@ -570,6 +600,11 @@ void IASsure::IASsure::ShowCalculatedIAS(const EuroScopePlugIn::CRadarTarget& rt
 	}
 
 	strcpy_s(tagItemContent, 16, tag.str().c_str());
+	if (this->unreliableSpeedToggled.contains(rt.GetCallsign()) && this->unreliableIASColor != nullptr) {
+		// aircraft has been flagged as having unreliable speed, but no unreliable IAS indicator was configured, but a color was set
+		*tagItemColorCode = EuroScopePlugIn::TAG_COLOR_RGB_DEFINED;
+		*tagItemRGB = *this->unreliableIASColor;
+	}
 }
 
 void IASsure::IASsure::SetReportedMach(const EuroScopePlugIn::CFlightPlan& fp, std::string selected)
@@ -689,16 +724,53 @@ void IASsure::IASsure::ShowCalculatedMach(const EuroScopePlugIn::CRadarTarget& r
 	}
 
 	strcpy_s(tagItemContent, 16, tag.str().c_str());
+	if (this->unreliableSpeedToggled.contains(rt.GetCallsign()) && this->unreliableMachColor != nullptr) {
+		// aircraft has been flagged as having unreliable speed, but no unreliable Mach number indicator was configured, but a color was set
+		*tagItemColorCode = EuroScopePlugIn::TAG_COLOR_RGB_DEFINED;
+		*tagItemRGB = *this->unreliableMachColor;
+	}
 }
 
 void IASsure::IASsure::ToggleUnreliableSpeed(const EuroScopePlugIn::CFlightPlan& fp)
 {
 	std::string cs = fp.GetCallsign();
+	bool enabled = false;
 	if (this->unreliableSpeedToggled.contains(cs)) {
 		this->unreliableSpeedToggled.erase(cs);
 	}
 	else {
 		this->unreliableSpeedToggled.insert(cs);
+		enabled = true;
+	}
+
+	if (this->broadcastUnreliableSpeed) {
+		std::ostringstream msg;
+		msg << SCRATCH_PAD_BROADCAST_PREFIX << SCRATCH_PAD_DELIMITER
+			<< SCRATCH_PAD_BROADCAST_UNRELIABLE_SPEED << SCRATCH_PAD_DELIMITER
+			<< enabled;
+		this->BroadcastScratchPad(fp, msg.str());
+	}
+}
+
+void IASsure::IASsure::BroadcastScratchPad(const EuroScopePlugIn::CFlightPlan& fp, std::string msg)
+{
+	if (!fp.IsValid()) {
+		return;
+	}
+
+	if (!fp.GetTrackingControllerIsMe() && strcmp(fp.GetTrackingControllerId(), "") != 0) {
+		return;
+	}
+
+	auto cad = fp.GetControllerAssignedData();
+	std::string scratch = cad.GetScratchPadString();
+
+	if (!cad.SetScratchPadString(msg.c_str())) {
+		this->LogMessage("Failed to set broadcast message in scratch pad", fp.GetCallsign());
+	}
+
+	if (!cad.SetScratchPadString(scratch.c_str())) {
+		this->LogMessage("Failed to reset scratch pad after setting broadcast message", fp.GetCallsign());
 	}
 }
 
@@ -1036,6 +1108,15 @@ void IASsure::IASsure::TryLoadConfigFile()
 	}
 	catch (std::exception) {
 		this->LogDebugMessage("Failed to parse weather section of config file, might not exist. Ignoring", "Config");
+	}
+
+	try {
+		auto& broadcastCfg = cfg.at("broadcast");
+
+		this->broadcastUnreliableSpeed = broadcastCfg.value<bool>("unreliableSpeed", this->broadcastUnreliableSpeed);
+	}
+	catch (std::exception) {
+		this->LogDebugMessage("Failed to parse broadcast section of config file, might not exist. Ignoring", "Config");
 	}
 
 	this->LogDebugMessage("Successfully loaded config file", "Config");

@@ -30,6 +30,7 @@ namespace IASsure {
 		bool OnCompileCommand(const char* sCommandLine);
 		void OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan, EuroScopePlugIn::CRadarTarget RadarTarget, int ItemCode, int TagData, char sItemString[16], int* pColorCode, COLORREF* pRGB, double* pFontSize);
 		void OnFunctionCall(int FunctionId, const char* sItemString, POINT Pt, RECT Area);
+		void OnFlightPlanControllerAssignedDataUpdate(EuroScopePlugIn::CFlightPlan FlightPlan, int DataType);
 		void OnTimer(int Counter);
 
 	private:
@@ -46,6 +47,7 @@ namespace IASsure {
 		COLORREF* unreliableIASColor;
 		std::string unreliableMachIndicator;
 		COLORREF* unreliableMachColor;
+		bool broadcastUnreliableSpeed;
 
 		std::unordered_map<std::string, int> reportedIAS;
 		std::unordered_set<std::string> calculatedIASToggled;
@@ -74,6 +76,8 @@ namespace IASsure {
 		void ShowCalculatedMach(const EuroScopePlugIn::CRadarTarget& rt, char tagItemContent[16], int* tagItemColorCode, COLORREF* tagItemRGB, bool aboveThreshold = false, bool onlyToggled = false);
 
 		void ToggleUnreliableSpeed(const EuroScopePlugIn::CFlightPlan& fp);
+
+		void BroadcastScratchPad(const EuroScopePlugIn::CFlightPlan& fp, std::string msg);
 
 		void UpdateLoginState();
 		void CheckLoginState();
