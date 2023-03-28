@@ -31,6 +31,7 @@ namespace IASsure {
 		void OnGetTagItem(EuroScopePlugIn::CFlightPlan FlightPlan, EuroScopePlugIn::CRadarTarget RadarTarget, int ItemCode, int TagData, char sItemString[16], int* pColorCode, COLORREF* pRGB, double* pFontSize);
 		void OnFunctionCall(int FunctionId, const char* sItemString, POINT Pt, RECT Area);
 		void OnFlightPlanControllerAssignedDataUpdate(EuroScopePlugIn::CFlightPlan FlightPlan, int DataType);
+		void OnFlightPlanFlightStripPushed(EuroScopePlugIn::CFlightPlan FlightPlan, const char* sSenderController, const char* sTargetController);
 		void OnTimer(int Counter);
 
 	private:
@@ -78,6 +79,11 @@ namespace IASsure {
 		void ToggleUnreliableSpeed(const EuroScopePlugIn::CFlightPlan& fp);
 
 		void BroadcastScratchPad(const EuroScopePlugIn::CFlightPlan& fp, std::string msg);
+		void CheckScratchPadBroadcast(const EuroScopePlugIn::CFlightPlan& fp);
+
+		void SetFlightStripAnnotation(const EuroScopePlugIn::CFlightPlan& fp, std::string msg, int index = BROADCAST_FLIGHT_STRIP_INDEX);
+		void CheckFlightStripAnnotations(const EuroScopePlugIn::CFlightPlan& fp);
+		void CheckFlightStripAnnotationsForAllAircraft();
 
 		void UpdateLoginState();
 		void CheckLoginState();

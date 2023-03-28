@@ -426,24 +426,22 @@ void IASsure::IASsure::OnFlightPlanControllerAssignedDataUpdate(EuroScopePlugIn:
 
 	switch (DataType) {
 	case EuroScopePlugIn::CTR_DATA_TYPE_SCRATCH_PAD_STRING:
-	{
-		auto cad = FlightPlan.GetControllerAssignedData();
-		std::vector<std::string> scratch = split(cad.GetScratchPadString(), SCRATCH_PAD_DELIMITER);
-
-		if (scratch.size() >= 3 && scratch[0] == SCRATCH_PAD_BROADCAST_PREFIX) {
-			if (this->broadcastUnreliableSpeed && scratch[1] == SCRATCH_PAD_BROADCAST_UNRELIABLE_SPEED) {
-				if (scratch[2] == "1") {
-					this->unreliableSpeedToggled.insert(FlightPlan.GetCallsign());
-					this->LogDebugMessage("Enabling unreliable speed indication for aircraft after broadcast", FlightPlan.GetCallsign());
-				}
-				else {
-					this->unreliableSpeedToggled.erase(FlightPlan.GetCallsign());
-					this->LogDebugMessage("Disabling unreliable speed indication for aircraft after broadcast", FlightPlan.GetCallsign());
-				}
-			}
-		}
+		this->CheckScratchPadBroadcast(FlightPlan);
 		break;
 	}
+}
+
+void IASsure::IASsure::OnFlightPlanFlightStripPushed(EuroScopePlugIn::CFlightPlan FlightPlan, const char* sSenderController, const char* sTargetController)
+{
+	if (!FlightPlan.IsValid()) {
+		return;
+	}
+
+	auto cad = FlightPlan.GetControllerAssignedData();
+
+	if (strcmp(sTargetController, this->ControllerMyself().GetCallsign()) == 0) {
+		// tag is being pushed to us, check if we need to set unreliable speed indication from flightstrip
+		this->CheckFlightStripAnnotations(FlightPlan);
 	}
 }
 
@@ -745,9 +743,12 @@ void IASsure::IASsure::ToggleUnreliableSpeed(const EuroScopePlugIn::CFlightPlan&
 
 	if (this->broadcastUnreliableSpeed) {
 		std::ostringstream msg;
-		msg << SCRATCH_PAD_BROADCAST_PREFIX << SCRATCH_PAD_DELIMITER
-			<< SCRATCH_PAD_BROADCAST_UNRELIABLE_SPEED << SCRATCH_PAD_DELIMITER
-			<< enabled;
+		msg << BROADCAST_PREFIX << BROADCAST_DELIMITER
+			<< BROADCAST_UNRELIABLE_SPEED;
+
+		this->SetFlightStripAnnotation(fp, enabled ? msg.str() : "");
+
+		msg << BROADCAST_DELIMITER << enabled;
 		this->BroadcastScratchPad(fp, msg.str());
 	}
 }
@@ -774,6 +775,79 @@ void IASsure::IASsure::BroadcastScratchPad(const EuroScopePlugIn::CFlightPlan& f
 	}
 }
 
+void IASsure::IASsure::CheckScratchPadBroadcast(const EuroScopePlugIn::CFlightPlan& fp)
+{
+	std::vector<std::string> scratch = split(fp.GetControllerAssignedData().GetScratchPadString(), BROADCAST_DELIMITER);
+
+	if (scratch.size() < 3 || scratch[0] != BROADCAST_PREFIX) {
+		return;
+	}
+
+	if (this->broadcastUnreliableSpeed && scratch[1] == BROADCAST_UNRELIABLE_SPEED) {
+		if (scratch[2] == "1") {
+			this->LogDebugMessage("Enabling unreliable speed indication for aircraft after broadcast", fp.GetCallsign());
+			this->unreliableSpeedToggled.insert(fp.GetCallsign());
+		}
+		else {
+			this->LogDebugMessage("Disabling unreliable speed indication for aircraft after broadcast", fp.GetCallsign());
+			this->unreliableSpeedToggled.erase(fp.GetCallsign());
+		}
+	}
+}
+
+void IASsure::IASsure::SetFlightStripAnnotation(const EuroScopePlugIn::CFlightPlan& fp, std::string msg, int index)
+{
+	if (!fp.IsValid()) {
+		return;
+	}
+
+	if (!fp.GetTrackingControllerIsMe() && strcmp(fp.GetTrackingControllerId(), "") != 0) {
+		return;
+	}
+
+	auto cad = fp.GetControllerAssignedData();
+
+	if (!cad.SetFlightStripAnnotation(index, msg.c_str())) {
+		this->LogMessage("Failed to set message in flight strip annotations", fp.GetCallsign());
+	}
+}
+
+void IASsure::IASsure::CheckFlightStripAnnotations(const EuroScopePlugIn::CFlightPlan& fp)
+{
+	if (!fp.IsValid()) {
+		return;
+	}
+
+	std::string annotation = fp.GetControllerAssignedData().GetFlightStripAnnotation(BROADCAST_FLIGHT_STRIP_INDEX);
+	std::vector<std::string> msg = split(annotation, BROADCAST_DELIMITER);
+
+	if (msg.size() < 2 || msg[0] != BROADCAST_PREFIX) {
+		return;
+	}
+
+	if (this->broadcastUnreliableSpeed) {
+		if (msg[1] == BROADCAST_UNRELIABLE_SPEED) {
+			this->LogDebugMessage("Enabling unreliable speed indication for aircraft due to flight strip annotation", fp.GetCallsign());
+			this->unreliableSpeedToggled.insert(fp.GetCallsign());
+		}
+		else {
+			this->LogDebugMessage("Disabling unreliable speed indication for aircraft due to empty flight strip annotation", fp.GetCallsign());
+			this->unreliableSpeedToggled.erase(fp.GetCallsign());
+		}
+	}
+}
+
+void IASsure::IASsure::CheckFlightStripAnnotationsForAllAircraft()
+{
+	if (this->broadcastUnreliableSpeed) {
+		this->unreliableSpeedToggled.clear();
+
+		for (EuroScopePlugIn::CFlightPlan fp = this->FlightPlanSelectFirst(); fp.IsValid(); fp = this->FlightPlanSelectNext(fp)) {
+			this->CheckFlightStripAnnotations(fp);
+		}
+	}
+}
+
 void IASsure::IASsure::UpdateLoginState()
 {
 	// login state has not changed, nothing to do
@@ -793,6 +867,7 @@ void IASsure::IASsure::CheckLoginState()
 	case EuroScopePlugIn::CONNECTION_TYPE_VIA_PROXY:
 		// user is connected, start weather update if it's not running yet
 		this->StartWeatherUpdater();
+		this->CheckFlightStripAnnotationsForAllAircraft();
 		break;
 	default:
 		// user is disconnected or is using incompatible connection (e.g. sweatbox), stop weather updater if it's running

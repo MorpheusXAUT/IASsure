@@ -8,9 +8,10 @@ constexpr auto PLUGIN_AUTHOR = "Nick Mueller";
 constexpr auto PLUGIN_LICENSE = "(c) 2022, MIT License";
 
 constexpr auto SETTINGS_DELIMITER = '|';
-constexpr auto SCRATCH_PAD_DELIMITER = '/';
-constexpr auto SCRATCH_PAD_BROADCAST_PREFIX = "IAS";
-constexpr auto SCRATCH_PAD_BROADCAST_UNRELIABLE_SPEED = "UNRELSPD";
+constexpr auto BROADCAST_DELIMITER = '/';
+constexpr auto BROADCAST_PREFIX = "IAS";
+constexpr auto BROADCAST_UNRELIABLE_SPEED = "US";
+const int BROADCAST_FLIGHT_STRIP_INDEX = 4;
 
 const int TAG_ITEM_CALCULATED_IAS = 1;
 const int TAG_ITEM_CALCULATED_IAS_TOGGLABLE = 2;
