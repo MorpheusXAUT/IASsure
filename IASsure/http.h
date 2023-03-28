@@ -9,10 +9,11 @@
 
 namespace IASsure {
 	namespace HTTP {
-		std::string get(const std::string url);
+		std::string get(const std::string& url);
 		std::string get(const char* const url);
 
-		std::string getLastErrorMessage(std::string prefix = "");
+		std::pair<std::string, std::string> getServerNameAndPath(const std::string& url);
+		[[noreturn]] void throwLastError(const std::string& functionName);
 
 		const std::string USER_AGENT = "IASsure/" + std::string(PLUGIN_VERSION);
 	}
