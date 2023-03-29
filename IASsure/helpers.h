@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <string>
@@ -92,5 +93,10 @@ namespace IASsure {
 		}
 
 		return new COLORREF(RGB(r, g, b));
+	}
+
+	inline std::string toLowercase(std::string str) {
+		std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) {return std::tolower(c); });
+		return str;
 	}
 }

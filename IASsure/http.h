@@ -12,7 +12,7 @@ namespace IASsure {
 		std::string get(const std::string& url);
 		std::string get(const char* const url);
 
-		std::pair<std::string, std::string> getServerNameAndPath(const std::string& url);
+		std::tuple<std::string, INTERNET_PORT, DWORD, std::string> parseURL(std::string url);
 		[[noreturn]] void throwLastError(const std::string& functionName);
 
 		const std::string USER_AGENT = "IASsure/" + std::string(PLUGIN_VERSION);

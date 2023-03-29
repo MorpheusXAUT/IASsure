@@ -7,7 +7,7 @@ std::string IASsure::HTTP::get(const char* const url)
 
 std::string IASsure::HTTP::get(const std::string& url)
 {
-    auto [serverName, path] = IASsure::HTTP::getServerNameAndPath(url);
+    auto [serverName, port, flags, path] = IASsure::HTTP::parseURL(url);
     HINTERNET hInternet = nullptr, hConnect = nullptr, hRequest = nullptr;
     std::string resp;
 
@@ -17,17 +17,23 @@ std::string IASsure::HTTP::get(const std::string& url)
             IASsure::HTTP::throwLastError("InternetOpenA");
         }
 
-        hConnect = InternetConnectA(hInternet, serverName.c_str(), INTERNET_DEFAULT_HTTPS_PORT, nullptr, nullptr, INTERNET_SERVICE_HTTP, 0, 0);
+        hConnect = InternetConnectA(hInternet, serverName.c_str(), port, nullptr, nullptr, INTERNET_SERVICE_HTTP, 0, 0);
         if (hConnect == nullptr) {
             IASsure::HTTP::throwLastError("InternetConnectA");
         }
 
-        hRequest = HttpOpenRequestA(hConnect, "GET", path.c_str(), nullptr, nullptr, nullptr, INTERNET_FLAG_SECURE | INTERNET_FLAG_PRAGMA_NOCACHE | INTERNET_FLAG_RELOAD, 0);
+        DWORD timeout = 10000; // 10s
+        BOOL success = InternetSetOption(hConnect, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(timeout));
+        if (!success) {
+            IASsure::HTTP::throwLastError("InternetSetOption");
+        }
+
+        hRequest = HttpOpenRequestA(hConnect, "GET", path.c_str(), nullptr, nullptr, nullptr, flags, 0);
         if (hRequest == nullptr) {
             IASsure::HTTP::throwLastError("HttpOpenRequestA");
         }
 
-        BOOL success = HttpSendRequestA(hRequest, nullptr, 0, nullptr, 0);
+        success = HttpSendRequestA(hRequest, nullptr, 0, nullptr, 0);
         if (!success) {
             IASsure::HTTP::throwLastError("HttpSendRequestA");
         }
@@ -73,32 +79,48 @@ std::string IASsure::HTTP::get(const std::string& url)
     return resp;
 }
 
-std::pair<std::string, std::string> IASsure::HTTP::getServerNameAndPath(const std::string& url)
+std::tuple<std::string, INTERNET_PORT, DWORD, std::string> IASsure::HTTP::parseURL(std::string url)
 {
-    std::string serverName;
-    std::string path;
+    std::string protocol = "http", hostname, path = "/";
+    INTERNET_PORT port = INTERNET_DEFAULT_HTTP_PORT;
+    DWORD flags = INTERNET_FLAG_PRAGMA_NOCACHE | INTERNET_FLAG_RELOAD;
 
-    // Find the position of the start of the server name in the URL
-    size_t start = url.find("://");
-    if (start == std::string::npos) {
-        throw std::invalid_argument("Invalid URL: no protocol specified.");
+    // find protocol
+    int protocolEnd = url.find("://");
+    if (protocolEnd != std::string::npos) {
+        protocol = toLowercase(url.substr(0, protocolEnd));
+        if (protocol == "https") {
+            port = INTERNET_DEFAULT_HTTPS_PORT;
+            flags |= INTERNET_FLAG_SECURE;
+        } else if (protocol != "http") {
+            throw std::invalid_argument("Invalid protocol: " + protocol);
+        }
+        url = url.substr(protocolEnd + 3); // skip "://"
     }
-    start += 3; // Skip over "://"
 
-    // Find the position of the end of the server name in the URL
-    size_t end = url.find('/', start);
-    if (end == std::string::npos) {
-        // No path was found, so the entire URL is the server name
-        serverName = url.substr(start);
-        path = "/";
+    // find port
+    int portStart = url.find(":");
+    int portEnd = url.find("/");
+    if (portStart != std::string::npos && portEnd != std::string::npos && portEnd > portStart) {
+        port = stoi(url.substr(portStart + 1, portEnd - portStart - 1));
+        url = url.substr(0, portStart) + url.substr(portEnd); // remove the port from the URL
+    }
+
+    // find hostname
+    int hostnameEnd = url.find("/");
+    if (hostnameEnd != std::string::npos) {
+        hostname = url.substr(0, hostnameEnd);
+        url = url.substr(hostnameEnd); // keep the rest as path
+        if (url.length() > 0) {
+            path = url;
+        }
     }
     else {
-        // Split the URL into server name and path
-        serverName = url.substr(start, end - start);
-        path = url.substr(end);
+        hostname = url;
     }
 
-    return { serverName, path };
+    // return the results as a tuple
+    return make_tuple(hostname, port, flags, path);
 }
 
 [[noreturn]] void IASsure::HTTP::throwLastError(const std::string& functionName)
@@ -114,8 +136,8 @@ std::pair<std::string, std::string> IASsure::HTTP::getServerNameAndPath(const st
     msg << " failed with error code " << errorCode;
 
     DWORD formatResult = FormatMessageA(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        nullptr, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&errorText, 0, nullptr);
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_FROM_HMODULE | FORMAT_MESSAGE_IGNORE_INSERTS,
+        GetModuleHandle("wininet.dll"), errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&errorText, 0, nullptr);
     if (formatResult && errorText != nullptr) {
         msg << ": " << errorText;
         LocalFree(errorText);
