@@ -6,21 +6,22 @@ This plugin allows you to make better informed decisions based on aircraft speed
 
 ## Table of Contents
 
-- [Getting started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Verifying releases](#verifying-releases)
-  - [Installation](#installation)
-- [Usage](#usage)
-  - [Basics](#basics)
-  - [Tag items](#tag-items)
-  - [Tag functions](#tag-functions)
-  - [Chat commands](#chat-commands)
-  - [Config](#config)
-  - [Weather data](#weather-data)
-- [Contributing](#contributing)
-  - [Development setup](#development-setup)
-- [Acknowledgments](#acknowledgments)
-- [License](#license)
+-   [Getting started](#getting-started)
+    -   [Prerequisites](#prerequisites)
+    -   [Verifying releases](#verifying-releases)
+    -   [Installation](#installation)
+-   [Usage](#usage)
+    -   [Basics](#basics)
+    -   [Tag items](#tag-items)
+    -   [Tag functions](#tag-functions)
+    -   [Chat commands](#chat-commands)
+    -   [Config](#config)
+    -   [Weather data](#weather-data)
+    -   [Unreliable speed indication](#unreliable-speed-indication)
+-   [Contributing](#contributing)
+    -   [Development setup](#development-setup)
+-   [Acknowledgments](#acknowledgments)
+-   [License](#license)
 
 ## Getting started
 
@@ -34,16 +35,22 @@ Each release includes a `checksums.txt` file, containing the `sha256` checksums 
 All signatures are made using GPG key [`54930D654C505BA73BC06A0E4C685956F39779B2`](54930D654C505BA73BC06A0E4C685956F39779B2.asc).
 
 In order to verify a release, perform the following steps:
-- Import the signing key into your local keyring (only required once):
+
+-   Import the signing key into your local keyring (only required once):
+
 ```bash
 gpg --import 54930D654C505BA73BC06A0E4C685956F39779B2.asc
 ```
-- Download the appropriate archive, `checksums.txt` and `checksums.txt.sig` from the [Releases](https://github.com/MorpheusXAUT/IASsure/releases) page
-- Verify the integrity of the checksums file:
+
+-   Download the appropriate archive, `checksums.txt` and `checksums.txt.sig` from the [Releases](https://github.com/MorpheusXAUT/IASsure/releases) page
+-   Verify the integrity of the checksums file:
+
 ```bash
 gpg --verify checksums.txt.sig checksums.txt
 ```
-- Verify the checksum of the downloaded archive:
+
+-   Verify the checksum of the downloaded archive:
+
 ```bash
 sha256sum --ignore-missing -c checksums.txt
 ```
@@ -54,9 +61,9 @@ sha256sum --ignore-missing -c checksums.txt
 2. (Optional) [Verify downloaded release](#verifying-releases).
 3. Extract the zip file to a location of your choosing (most likely somewhere inside your EuroScope sector file/profile setup, along with other plugins that are already set up). As a [config file](#config) is supported (and expected to reside within the same folder as the plugin's `.dll`), it's advised to create a new `IASsure` folder.
 4. Start EuroScope and open the **Plug-ins ...** dialog in the settings menu (**OTHER SET**).
-![Plug-ins dialog](https://i.imgur.com/SrVtRp9.png)
+   ![Plug-ins dialog](https://i.imgur.com/SrVtRp9.png)
 5. **Load** the plugins by navigating to the folder you extracted `IASsure` to and selecting the exacted `IASsure.dll`. Ensure the expected version is displayed.
-![Load plugin](https://i.imgur.com/D1eawjA.png)
+   ![Load plugin](https://i.imgur.com/D1eawjA.png)
 6. Close the plugin dialog by clicking **Close**.
 7. Configure your tags via the **TAG editor ...** dialog in the settings menu (**OTHER SET**). See [tag items](#tag-items) and [tag functions](#tag-functions) below for a list of available options.
 8. Close the tag editor dialog by clicking **OK**.
@@ -81,8 +88,9 @@ Whilst only these two values are available at the moment, there's several repres
 ![Calculated IAS](https://i.imgur.com/vHiockm.png)  
 Displays (full) calculated indicated air speed (in knots) including selected prefix (default `I`).  
 Recommended function setup:
-- Left click: [Open reported IAS menu](#open-reported-ias-menu)
-- Right click: [Toggle calculated IAS](#toggle-calculated-ias)
+
+-   Left click: [Open reported IAS menu](#open-reported-ias-menu)
+-   Right click: [Toggle calculated IAS](#toggle-calculated-ias)
 
 ![Calculated IAS setup](https://i.imgur.com/PRU8yVB.png)
 
@@ -96,8 +104,9 @@ To be used in reduced tags to selectively display calculated IAS without showing
 ![Calculated IAS (abbreviated)](https://i.imgur.com/1OPKMVy.png)  
 Displays abbreviated calculated indicated air speed (in tens of knots) without any prefix.  
 Recommended function setup:
-- Left click: [Open reported IAS menu](#open-reported-ias-menu)
-- Right click: [Toggle calculated IAS (abbreviated)](#toggle-calculated-ias-abbreviated)
+
+-   Left click: [Open reported IAS menu](#open-reported-ias-menu)
+-   Right click: [Toggle calculated IAS (abbreviated)](#toggle-calculated-ias-abbreviated)
 
 ![Calculated IAS (abbreviated) setup](https://i.imgur.com/6n8Bp97.png)
 
@@ -111,8 +120,9 @@ To be used in reduced tags to selectively display calculated IAS without showing
 ![Calculated Mach](https://i.imgur.com/yQhdRJH.png)  
 Displays calculated Mach number including selected prefix (default `M`) and configured precision (default 2 digits).  
 Recommended function setup:
-- Left click: [Open reported Mach menu](#open-reported-mach-menu)
-- Right click: [Toggle calculated Mach](#toggle-calculated-mach)
+
+-   Left click: [Open reported Mach menu](#open-reported-mach-menu)
+-   Right click: [Toggle calculated Mach](#toggle-calculated-mach)
 
 ![Calculated Mach setup](https://i.imgur.com/zTsfQoa.png)
 
@@ -126,8 +136,9 @@ To be used in reduced tags to selectively display calculated Mach number without
 ![Calculated Mach (above threshold)](https://i.imgur.com/yQhdRJH.png)  
 Displays calculated Mach number including selected prefix (default `M`) and configured precision (default 2 digits) for all aircraft above the desired flight level threshold (default FL245). Any aircraft below the threshold will have an empty tag.  
 Recommended function setup:
-- Left click: [Open reported Mach menu](#open-reported-mach-menu)
-- Right click: [Toggle calculated Mach (above threshold)](#toggle-calculated-mach-above-threshold)
+
+-   Left click: [Open reported Mach menu](#open-reported-mach-menu)
+-   Right click: [Toggle calculated Mach (above threshold)](#toggle-calculated-mach-above-threshold)
 
 ![Calculated Mach (above threshold) setup](https://i.imgur.com/GGftOFt.png)
 
@@ -151,8 +162,7 @@ Triggering this tag function clears the selected reported Mach number for this r
 ![Open reported IAS menu](https://i.imgur.com/OvM6hxj.png)  
 Triggering this tag function allows controllers to select the indicated air speed reported by the pilot (e.g. via voice). This will switch the [Calculated IAS](#calculated-ias) and [Calculated IAS (abbreviated)](#calculated-ias-abbreviated) (as well as their togglable counterparts) to display the difference between calculated and reported IAS, providing a quick overview in the spot winds for the selected aircraft. This allows for easier estimation of required speed differences in sequencing if two radar targets use different winds.
 
-![IAS difference calculation](https://i.imgur.com/VOlX6QZ.png)
-
+![IAS difference calculation](https://i.imgur.com/VOlX6QZ.png)  
 As shown above, the speed difference of 15kts (270 calculated, 255 reported) is displayed as `-02` (in abbreviated form, rounded to 20kts), indicating the aircraft is roughly 20kts slower than expected.
 
 #### Open reported Mach menu
@@ -160,8 +170,7 @@ As shown above, the speed difference of 15kts (270 calculated, 255 reported) is 
 ![Open reported Mach menu](https://i.imgur.com/VWiwpFk.png)  
 Triggering this tag function allows controllers to select the Mach number reported by the pilot (e.g. via voice). This will switch the [Calculated Mach](#calculated-mach) and [Calculated Mach (above threshold)](#calculated-mach-above-threshold) (as well as their togglable counterparts) to display the difference between calculated and reported Mach number, providing a quick overview in the spot winds for the selected aircraft. This allows for easier estimation of required speed differences in sequencing if two radar targets use different winds.
 
-![Mach difference calculation](https://i.imgur.com/QOxssn8.png)
-
+![Mach difference calculation](https://i.imgur.com/QOxssn8.png)  
 As shown above, the speed difference of M0.01 (M0.80 calculated, M.081 reported) is displayed as `+01`, indicating the aircraft is roughly M0.01 faster than expected.
 
 #### Toggle calculated IAS
@@ -180,6 +189,10 @@ Toggles the display of the [Calculated Mach (togglable)](#calculated-mach-toggla
 
 Toggles the display of the [Calculated Mach (above threshold, togglable)](#calculated-mach-above-threshold-togglable) for the selected aircraft, enabling the tag item's content. Executing this function for the same radar target again disables the togglable display value.
 
+#### Toggle unreliable speed
+
+Toggles the [unreliable speed indication](#unreliable-speed-indication) for the selected aircraft, marking the calculated speeds as unreliable. Executing this function for the same radar target again disables the status.
+
 ### Chat commands
 
 Chat commands allow for some on-the-fly configuration of `IASsure`'s features. All commands are prefixed with `.ias` and provide some basic information about their usage when executed without arguments. Executing `.ias` (without any further commands/arguments) prints the version loaded and a list of available commands.
@@ -197,6 +210,12 @@ This setting will be saved to the EuroScope settings upon exit.
 `.ias reset`
 
 Resets the plugin's internal state, clearing all reported IAS/Mach numbers as well as toggled tag items, also removing the currently stored weather information and causing it to be re-fetched.
+
+#### Reload plugin config
+
+`.ias reload`
+
+Reloads the plugin's [config file](#config).
 
 #### Configure weather handling
 
@@ -291,25 +310,31 @@ All settings available via config file are optional - if no value was found in t
 
 The configuration file is expected to consist of a top level object with one or multiple of the following keys:
 
-| Key       | Type     | Description                         |
-| --------- | -------- | ----------------------------------- |
-| `mach`    | `object` | Mach number calculation settings    |
-| `prefix`  | `object` | Calculated IAS/Mach number prefixes |
-| `weather` | `object` | Weather handling                    |
+| Key         | Type     | Description                                        |
+| ----------- | -------- | -------------------------------------------------- |
+| `mach`      | `object` | Mach number calculation settings                   |
+| `ias`       | `object` | IAS calculation settings                           |
+| `weather`   | `object` | Weather handling                                   |
+| `broadcast` | `object` | Plugin broadcast/coordination configuration        |
+| `prefix`    | `object` | **DEPRECATED** Calculated IAS/Mach number prefixes |
 
 #### `mach` object
 
-| Key           | Type     | Description                            |
-| ------------- | -------- | -------------------------------------- |
-| `digits`      | `int`    | Digit count for calculated Mach number |
-| `thresholdFL` | `int`    | Threshold for Mach number calculations |
+| Key                   | Type         | Description                                                                             |
+| --------------------- | ------------ | --------------------------------------------------------------------------------------- |
+| `digits`              | `int`        | Digit count for calculated Mach number                                                  |
+| `thresholdFL`         | `int`        | Threshold for Mach number calculations                                                  |
+| `prefix`              | `string`     | Calculated Mach number prefix                                                           |
+| `unreliableIndicator` | `string`     | Indicator to display instead of Mach number for aircraft with unreliable speed toggled  |
+| `unreliableColor`     | `RGB string` | Color as RGB string (`"123,123,123"`) to set for aircraft with unreliable speed toggled |
 
-#### `prefix` object
+#### `ias` object
 
-| Key    | Type     | Description                   |
-| ------ | -------- | ----------------------------- |
-| `ias`  | `string` | Calculated IAS prefix         |
-| `mach` | `string` | Calculated Mach number prefix |
+| Key                   | Type         | Description                                                                             |
+| --------------------- | ------------ | --------------------------------------------------------------------------------------- |
+| `prefix`              | `string`     | Calculated IAS prefix                                                                   |
+| `unreliableIndicator` | `string`     | Indicator to display instead of IAS for aircraft with unreliable speed toggled          |
+| `unreliableColor`     | `RGB string` | Color as RGB string (`"123,123,123"`) to set for aircraft with unreliable speed toggled |
 
 #### `weather` object
 
@@ -317,6 +342,22 @@ The configuration file is expected to consist of a top level object with one or 
 | -------- | -------- | ---------------------------- |
 | `url`    | `string` | Weather data update URL      |
 | `update` | `int`    | Weather data update interval |
+
+#### `broadcast` object
+
+| Key               | Type   | Description                                                         |
+| ----------------- | ------ | ------------------------------------------------------------------- |
+| `unreliableSpeed` | `bool` | Enables [unreliable speed broadcasts](#unreliable-speed-indication) |
+
+#### `prefix` object (**DEPRECATED**)
+
+This configuration block has been deprecated and was moved to the [`mach`](#mach-object) and [`ias`](#ias-object) objects.  
+Configuration will still be parsed for now, however you should update your config before the next major release as this option will be removed in the future.
+
+| Key    | Type     | Description                   |
+| ------ | -------- | ----------------------------- |
+| `ias`  | `string` | Calculated IAS prefix         |
+| `mach` | `string` | Calculated Mach number prefix |
 
 ### Weather data
 
@@ -333,6 +374,28 @@ The corresponding weather data file can be found [here](https://weather.morpheus
 As most (if not all) weather APIs providing the required level of detail/coverage for wind and temperature data require recurring fees, no general weather data can be bundled into this plugin or offered by the author - you will need to set up your own weather source.
 
 Feel free to get in contact via [discussions](https://github.com/MorpheusXAUT/IASsure/discussions) in this repository or via Discord if you would like to know more about setting up your own weather parser or need help doing so.
+
+### Unreliable speed indication
+
+In addition to calculating IAS/Mach number and displaying a difference to the reported speed, `IASsure` lets you mark the calculated values for an aircraft as unreliable via the [`Toggle unreliable speed`](#toggle-unreliable-speed) tag function.  
+Toggling an aircraft's speed as unreliable will change the way it is displayed in the respective tag items:
+
+-   If an `unreliableIndicator` is configured for either the Mach number or IAS, the plugin will display the configured value instead of the calculated value respectively.
+-   If the `unreliableIndicator` is explicitly set to `""` (empty string), the calculated speed value will still be displayed. This is allows you to still display the result while highlighting it in a different color.
+-   If no `unreliableIndicator` is configured, the default values (`"DIAS"`/`"DMACH"`) will be used.
+-   If an `unreliableColor` is configured for either the Mach number or IAS, the plugin will display the respective tag item in the color selected.
+-   If no `unreliableColor` is configured, the color of the tag items will not be changed.
+
+![Unreliable speed indication](https://i.imgur.com/kVnkM9l.png)  
+For the screenshot above, the indicator for IAS was set to `"DIAS"` (default) and no color was configured. The indicator for the Mach number was set to `""` (note: explicitly has been set to empty string, would default to `"DMACH"` otherwise) and a color value of `"240,225,41"` was set.
+
+Note that toggling an aircraft's speed as unreliable will automatically change both IAS and Mach number to their unreliable indication as both values will be "incorrect".
+
+In addition to displaying the indication on your own EuroScope instance, `IASsure` can broadcast the status change to other controllers (and multiple instances of EuroScope running on the same computer).
+This will lead to other controllers seeing the aircraft's speed indication updating when you toggle the status, allowing for easier coordination and handovers.  
+An unreliable speed indication change is only broadcasted if the aircraft is tracked by the current controller or not tracked at all to avoid toggling the status for neighbouring units and aircraft currently not under your responsibility.
+
+By default, this behavior is enabled. If you want to disable broadcasts (both sending and receiving them), set the `unreliableSpeed` value of the [`broadcast` object](#broadcast-object) in the config file to `false`.
 
 ## Contributing
 
@@ -352,8 +415,8 @@ Note: if you're using [TopSky](https://vatsim-scandinavia.org/forums/forum/54-pl
 
 This repository contains all third-party libraries used by the project in their respective `third_party` and `lib` folders:
 
-- `EuroScope`: EuroScope plugin library
-- `nlohmann/json`: [JSON for Modern C++](https://github.com/nlohmann/json/) ([v3.11.2](https://github.com/nlohmann/json/releases/tag/v3.11.2), [MIT License](https://github.com/nlohmann/json/blob/v3.11.2/LICENSE.MIT)), used for parsing the weather data and the optional config file
+-   `EuroScope`: EuroScope plugin library
+-   `nlohmann/json`: [JSON for Modern C++](https://github.com/nlohmann/json/) ([v3.11.2](https://github.com/nlohmann/json/releases/tag/v3.11.2), [MIT License](https://github.com/nlohmann/json/blob/v3.11.2/LICENSE.MIT)), used for parsing the weather data and the optional config file
 
 ## Acknowledgements
 
