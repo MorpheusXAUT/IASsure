@@ -122,5 +122,20 @@ namespace IASsureTest
 			AssertParseRGBString("-123,-123,-123", nullptr);
 			AssertParseRGBString("", nullptr);
 		}
+
+		void AssertToLowercase(std::string s, std::string expected)
+		{
+			std::string lower = IASsure::toLowercase(s);
+			Assert::AreEqual(expected, lower);
+		}
+
+		TEST_METHOD(TestToLowercase)
+		{
+			AssertToLowercase("EuroScope", "euroscope");
+			AssertToLowercase("euroscope", "euroscope");
+			AssertToLowercase("  Euro   Scope ", "  euro   scope ");
+			AssertToLowercase("  ", "  ");
+			AssertToLowercase("", "");
+		}
 	};
 }
