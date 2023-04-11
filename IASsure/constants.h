@@ -3,9 +3,9 @@
 #include <Windows.h>
 
 constexpr auto PLUGIN_NAME = "IASsure";
-constexpr auto PLUGIN_VERSION = "1.5.0-rc.2";
+constexpr auto PLUGIN_VERSION = "1.5.0";
 constexpr auto PLUGIN_AUTHOR = "Nick Mueller";
-constexpr auto PLUGIN_LICENSE = "(c) 2022, MIT License";
+constexpr auto PLUGIN_LICENSE = "(c) 2022-2023, MIT License";
 
 constexpr auto SETTINGS_DELIMITER = '|';
 constexpr auto BROADCAST_DELIMITER = '/';
