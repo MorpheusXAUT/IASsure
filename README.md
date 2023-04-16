@@ -365,15 +365,14 @@ As all barometric formulas used for IAS/Mach calculations require wind and tempe
 
 Note that weather data is only retrieved while the client is connected to VATSIM directly or via proxy - playback and sweatbox connections will not fetch weather information at all.
 
-Since neither EuroScope nor VATSIM provide spot winds/enroute wind data, a data source for weather information is required in order to utilise wind-corrected data. The current weather implementation is based on [Windy](https://www.windy.com/)'s data (or anything related provided in identical format) and defines several strategic reference points within a FIR. These points should cover all relevant parts/major traffic routes of your FIR in order to provide best weather data coverage without over-complicating weather data retrieval.
+Since neither EuroScope nor VATSIM provide spot winds/enroute wind data, a data source for weather information is required in order to utilise wind-corrected data. The original weather implementation was based on [Windy](https://www.windy.com/)'s data (or anything related provided in identical format) and defines several strategic reference points within a FIR. These points should cover all relevant parts/major traffic routes of your FIR in order to provide best weather data coverage without over-complicating weather data retrieval.
 
 The following screenshot shows an example weather reference point setup as defined for the LOVV FIR.  
 ![Example weather reference point setup LOVV](https://i.imgur.com/3YYbFwi.png)  
 The corresponding weather data file can be found [here](https://weather.morpheusxaut.net/LOVV.json).
 
-As most (if not all) weather APIs providing the required level of detail/coverage for wind and temperature data require recurring fees, no general weather data can be bundled into this plugin or offered by the author - you will need to set up your own weather source.
-
-Feel free to get in contact via [discussions](https://github.com/MorpheusXAUT/IASsure/discussions) in this repository or via Discord if you would like to know more about setting up your own weather parser or need help doing so.
+Since the Windy API unfortunately incurrs quite high license fees, no general weather data can be bundled into this plugin or offered by the author.  
+As an alternative, [dotFionn](https://github.com/dotFionn) wrote a wrapper parsing freely available weather data from [Open-Meteo](https://open-meteo.com/), allowing you to run your own weather source service for free. You can find the [`iassure-wx`](https://github.com/dotFionn/iassure-wx) service on GitHub - see the other repository for setup instructions. Thanks a lot to [dotFionn](https://github.com/dotFionn) for the work in creating a service to provide compatible data!
 
 ### Unreliable speed indication
 
